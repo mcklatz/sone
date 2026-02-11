@@ -66,7 +66,12 @@ export type AppView =
       };
     }
   | { type: "favorites" }
-  | { type: "search"; query: string };
+  | { type: "search"; query: string }
+  | {
+      type: "viewAll";
+      title: string;
+      apiPath: string;
+    };
 
 export interface SearchResults {
   artists: { id: number; name: string }[];
@@ -129,6 +134,31 @@ export interface StreamInfo {
   bitDepth?: number;
   sampleRate?: number;
   audioQuality?: string;
+}
+
+// ==================== Home Page Types ====================
+
+export interface HomeSection {
+  title: string;
+  sectionType: string;
+  items: any[];
+  hasMore: boolean;
+  apiPath?: string;
+}
+
+export interface HomePageResponse {
+  sections: HomeSection[];
+}
+
+export interface HomePageCached {
+  home: HomePageResponse;
+  isStale: boolean;
+}
+
+export interface ArtistDetail {
+  id: number;
+  name: string;
+  picture?: string;
 }
 
 interface PlaybackSnapshot {
@@ -789,6 +819,40 @@ export function useAudio() {
     setCurrentView(view);
   };
 
+  const navigateToViewAll = (title: string, apiPath: string) => {
+    const view: AppView = { type: "viewAll", title, apiPath };
+    window.history.pushState(view, "");
+    setCurrentView(view);
+  };
+
+  // ==================== Home Page API ====================
+
+  const getHomePage = useCallback(async (): Promise<HomePageCached> => {
+    return await invoke<HomePageCached>("get_home_page");
+  }, []);
+
+  const refreshHomePage = useCallback(async (): Promise<HomePageResponse> => {
+    return await invoke<HomePageResponse>("refresh_home_page");
+  }, []);
+
+  const getFavoriteArtists = useCallback(
+    async (limit: number = 20): Promise<ArtistDetail[]> => {
+      if (!authTokens?.user_id) throw new Error("Not authenticated");
+      return await invoke<ArtistDetail[]>("get_favorite_artists", {
+        userId: authTokens.user_id,
+        limit,
+      });
+    },
+    [authTokens?.user_id]
+  );
+
+  const getPageSection = useCallback(
+    async (apiPath: string): Promise<HomePageResponse> => {
+      return await invoke<HomePageResponse>("get_page_section", { apiPath });
+    },
+    []
+  );
+
   const searchTidal = useCallback(
     async (query: string, limit: number = 20): Promise<SearchResults> => {
       try {
@@ -989,7 +1053,12 @@ export function useAudio() {
     navigateToFavorites,
     navigateHome,
     navigateToSearch,
+    navigateToViewAll,
     searchTidal,
+    getHomePage,
+    refreshHomePage,
+    getFavoriteArtists,
+    getPageSection,
     toggleDrawer,
     setDrawerOpen,
     setDrawerTab,

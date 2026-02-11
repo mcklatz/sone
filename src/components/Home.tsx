@@ -1,50 +1,80 @@
 import { Play, Heart } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAudioContext } from "../contexts/AudioContext";
-import { getTidalImageUrl, type Playlist, type Track } from "../hooks/useAudio";
+import {
+  getTidalImageUrl,
+  type Playlist,
+  type HomeSection as HomeSectionType,
+  type ArtistDetail,
+} from "../hooks/useAudio";
 import TidalImage from "./TidalImage";
+import HomeSection from "./HomeSection";
 
 export default function Home() {
   const {
-    getPlaylistTracks,
-    playTrack,
-    setQueueTracks,
     userPlaylists,
-    navigateToAlbum,
     navigateToPlaylist,
     navigateToFavorites,
+    getHomePage,
+    refreshHomePage,
+    getFavoriteArtists,
   } = useAudioContext();
-  const [featuredTracks, setFeaturedTracks] = useState<Track[]>([]);
+
+  const [sections, setSections] = useState<HomeSectionType[]>([]);
+  const [favoriteArtists, setFavoriteArtists] = useState<ArtistDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState("Good evening");
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good morning");
     else if (hour < 18) setGreeting("Good afternoon");
     else setGreeting("Good evening");
+  }, []);
 
-    const loadFeatured = async () => {
-      if (userPlaylists.length > 0) {
-        try {
-          const tracks = await getPlaylistTracks(userPlaylists[0].uuid);
-          setFeaturedTracks(tracks.slice(0, 8));
-        } catch (err) {
-          console.error("Failed to load tracks:", err);
+  useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
+    const loadHomeData = async () => {
+      try {
+        // Load home page (cached or fresh)
+        const result = await getHomePage();
+        console.log(
+          "[Home] Loaded sections:",
+          result.home.sections.map((s) => `${s.sectionType}: "${s.title}" (${Array.isArray(s.items) ? s.items.length : 0} items)`),
+          "isStale:", result.isStale
+        );
+        setSections(result.home.sections);
+
+        // If cache is stale, refresh in background
+        if (result.isStale) {
+          refreshHomePage()
+            .then((fresh) => {
+              setSections(fresh.sections);
+            })
+            .catch((err) => {
+              console.error("Background refresh failed:", err);
+            });
         }
+      } catch (err) {
+        console.error("Failed to load home page:", err);
       }
+
+      // Load favorite artists separately (not in /pages/home)
+      try {
+        const artists = await getFavoriteArtists(20);
+        setFavoriteArtists(artists);
+      } catch (err) {
+        console.error("Failed to load favorite artists:", err);
+      }
+
       setLoading(false);
     };
-    loadFeatured();
-  }, [userPlaylists, getPlaylistTracks]);
 
-  const handlePlayTrack = async (track: Track) => {
-    try {
-      await playTrack(track);
-    } catch (err) {
-      console.error("Failed to play:", err);
-    }
-  };
+    loadHomeData();
+  }, [getHomePage, refreshHomePage, getFavoriteArtists]);
 
   const handleOpenPlaylist = (playlist: Playlist) => {
     navigateToPlaylist(playlist.uuid, {
@@ -56,12 +86,60 @@ export default function Home() {
     });
   };
 
+  // Build the favorite artists section as a HomeSection
+  const favoriteArtistsSection: HomeSectionType | null =
+    favoriteArtists.length > 0
+      ? {
+          title: "Your favorite artists",
+          sectionType: "ARTIST_LIST",
+          items: favoriteArtists.map((a) => ({
+            id: a.id,
+            name: a.name,
+            picture: a.picture,
+          })),
+          hasMore: false,
+          apiPath: undefined,
+        }
+      : null;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#121212]">
-        <div className="w-10 h-10 border-2 border-[#00FFFF] border-t-transparent rounded-full animate-spin" />
+      <div className="flex-1 bg-gradient-to-b from-[#1a1a1a] to-[#121212] min-h-full">
+        <div className="px-6 py-8">
+          {/* Skeleton greeting */}
+          <div className="h-10 w-64 bg-[#282828] rounded-lg animate-pulse mb-6" />
+          {/* Skeleton quick access */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-10">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-[56px] bg-[#282828]/40 rounded-[4px] animate-pulse" />
+            ))}
+          </div>
+          {/* Skeleton sections */}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="mb-8">
+              <div className="h-7 w-48 bg-[#282828] rounded animate-pulse mb-4" />
+              <div className="flex gap-4">
+                {Array.from({ length: 6 }).map((_, j) => (
+                  <div key={j} className="flex-shrink-0 w-[180px]">
+                    <div className="aspect-square bg-[#282828] rounded-md animate-pulse mb-2" />
+                    <div className="h-4 w-32 bg-[#282828] rounded animate-pulse mb-1" />
+                    <div className="h-3 w-24 bg-[#282828] rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
+  }
+
+  // Insert favorite artists section after the first few sections
+  const allSections = [...sections];
+  if (favoriteArtistsSection) {
+    // Try to insert it around position 6-8, or at the end if not enough sections
+    const insertIdx = Math.min(7, allSections.length);
+    allSections.splice(insertIdx, 0, favoriteArtistsSection);
   }
 
   return (
@@ -121,106 +199,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Recently Played / Featured */}
-        {featuredTracks.length > 0 && (
-          <section className="mb-10">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[22px] font-bold text-white tracking-tight hover:underline cursor-pointer">
-                Jump back in
-              </h2>
-              <button className="text-[13px] font-bold text-[#a6a6a6] hover:text-white uppercase tracking-wider transition-colors">
-                Show all
-              </button>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-              {featuredTracks.map((track, index) => (
-                <div
-                  key={track.id}
-                  onClick={() => {
-                    if (track.album?.id) {
-                      navigateToAlbum(track.album.id, {
-                        title: track.album.title,
-                        cover: track.album.cover,
-                        artistName: track.artist?.name,
-                      });
-                    }
-                  }}
-                  className="p-3 bg-[#181818] hover:bg-[#282828] rounded-md cursor-pointer group transition-[background-color] duration-300"
-                >
-                  <div className="aspect-square w-full rounded-md mb-3 relative overflow-hidden shadow-lg bg-[#282828]">
-                    <TidalImage
-                      src={getTidalImageUrl(track.album?.cover, 320)}
-                      alt={track.album?.title || track.title}
-                      className="w-full h-full transform group-hover:scale-105 transition-transform duration-500 ease-out"
-                    />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setQueueTracks(featuredTracks.slice(index + 1));
-                        handlePlayTrack(track);
-                      }}
-                      className="absolute bottom-2 right-2 w-10 h-10 bg-[#00FFFF] rounded-full flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-[opacity,transform] duration-300 scale-90 group-hover:scale-100 hover:scale-110"
-                    >
-                      <Play
-                        size={20}
-                        fill="black"
-                        className="text-black ml-1"
-                      />
-                    </button>
-                  </div>
-                  <h4 className="font-bold text-[15px] text-white truncate mb-1">
-                    {track.album?.title || track.title}
-                  </h4>
-                  <p className="text-[13px] text-[#a6a6a6] truncate hover:text-white hover:underline transition-colors">
-                    {track.artist?.name || "Unknown Artist"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Your Playlists */}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-[22px] font-bold text-white tracking-tight hover:underline cursor-pointer">
-              Your Playlists
-            </h2>
-            <button className="text-[13px] font-bold text-[#a6a6a6] hover:text-white uppercase tracking-wider transition-colors">
-              Show all
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-            {userPlaylists.slice(0, 16).map((playlist) => (
-              <div
-                key={playlist.uuid}
-                onClick={() => handleOpenPlaylist(playlist)}
-                className="p-3 bg-[#181818] hover:bg-[#282828] rounded-md cursor-pointer group transition-[background-color] duration-300"
-              >
-                <div className="aspect-square w-full rounded-md mb-3 relative overflow-hidden shadow-lg bg-[#282828]">
-                  <TidalImage
-                    src={getTidalImageUrl(playlist.image, 320)}
-                    alt={playlist.title}
-                    type="playlist"
-                    className="w-full h-full transform group-hover:scale-105 transition-transform duration-500 ease-out"
-                  />
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="absolute bottom-2 right-2 w-10 h-10 bg-[#00FFFF] rounded-full flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-[opacity,transform] duration-300 scale-90 group-hover:scale-100">
-                    <Play size={20} fill="black" className="text-black ml-1" />
-                  </div>
-                </div>
-                <h4 className="font-bold text-[15px] text-white truncate mb-1">
-                  {playlist.title}
-                </h4>
-                <p className="text-[13px] text-[#a6a6a6] line-clamp-2">
-                  {playlist.description ||
-                    `By ${playlist.creator?.name || "You"}`}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Dynamic sections from /pages/home + favorite artists */}
+        {allSections.map((section, idx) => (
+          <HomeSection key={`${section.title}-${idx}`} section={section} />
+        ))}
       </div>
     </div>
   );

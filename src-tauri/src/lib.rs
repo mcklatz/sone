@@ -10,7 +10,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::State;
-use tidal_api::{AuthTokens, DeviceCode, PaginatedTracks, StreamInfo, TidalAlbumDetail, TidalClient, TidalCredit, TidalLyrics, TidalPlaylist, TidalSearchResults, TidalTrack};
+use std::time::{SystemTime, UNIX_EPOCH};
+use tidal_api::{AuthTokens, DeviceCode, HomePageResponse, PaginatedTracks, StreamInfo, TidalAlbumDetail, TidalArtistDetail, TidalClient, TidalCredit, TidalLyrics, TidalPlaylist, TidalSearchResults, TidalTrack};
 
 
 #[tauri::command]
@@ -27,24 +28,46 @@ struct Settings {
     is_pkce: bool,
 }
 
+const CACHE_TTL_SECS: u64 = 12 * 60 * 60; // 12 hours
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+struct CacheMeta {
+    #[serde(default)]
+    home_page_ts: u64,
+    #[serde(default)]
+    favorite_artists_ts: u64,
+}
+
 pub struct AppState {
     audio_player: AudioPlayer,
     tidal_client: Mutex<TidalClient>,
     settings_path: PathBuf,
+    cache_dir: PathBuf,
+}
+
+fn now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
 }
 
 impl AppState {
     fn new() -> Self {
         // Get config dir
-        let mut settings_path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-        settings_path.push("tide-vibe");
-        fs::create_dir_all(&settings_path).ok();
-        settings_path.push("settings.json");
+        let mut config_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
+        config_dir.push("tide-vibe");
+        fs::create_dir_all(&config_dir).ok();
+
+        let settings_path = config_dir.join("settings.json");
+        let cache_dir = config_dir.join("cache");
+        fs::create_dir_all(&cache_dir).ok();
 
         Self {
             audio_player: AudioPlayer::new(),
             tidal_client: Mutex::new(TidalClient::new()),
             settings_path,
+            cache_dir,
         }
     }
 
@@ -59,6 +82,38 @@ impl AppState {
     fn save_settings(&self, settings: &Settings) -> Result<(), String> {
         let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
         fs::write(&self.settings_path, json).map_err(|e| e.to_string())
+    }
+
+    // ---- Cache helpers ----
+
+    fn load_cache_meta(&self) -> CacheMeta {
+        let path = self.cache_dir.join("cache_meta.json");
+        if let Ok(content) = fs::read_to_string(&path) {
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            CacheMeta::default()
+        }
+    }
+
+    fn save_cache_meta(&self, meta: &CacheMeta) -> Result<(), String> {
+        let path = self.cache_dir.join("cache_meta.json");
+        let json = serde_json::to_string_pretty(meta).map_err(|e| e.to_string())?;
+        fs::write(&path, json).map_err(|e| e.to_string())
+    }
+
+    fn read_cache_file(&self, name: &str) -> Option<String> {
+        let path = self.cache_dir.join(name);
+        fs::read_to_string(&path).ok()
+    }
+
+    fn write_cache_file(&self, name: &str, content: &str) -> Result<(), String> {
+        let path = self.cache_dir.join(name);
+        fs::write(&path, content).map_err(|e| e.to_string())
+    }
+
+    fn is_cache_fresh(&self, timestamp: u64) -> bool {
+        let now = now_secs();
+        now.saturating_sub(timestamp) < CACHE_TTL_SECS
     }
 }
 
@@ -197,6 +252,13 @@ fn logout(state: State<AppState>) -> Result<(), String> {
     // Delete settings file
     fs::remove_file(&state.settings_path).ok();
 
+    // Clear all cached data
+    if let Ok(entries) = fs::read_dir(&state.cache_dir) {
+        for entry in entries.flatten() {
+            fs::remove_file(entry.path()).ok();
+        }
+    }
+
     Ok(())
 }
 
@@ -313,6 +375,186 @@ fn get_stream_url(state: State<AppState>, track_id: u64, quality: String) -> Res
 fn search_tidal(state: State<AppState>, query: String, limit: u32) -> Result<TidalSearchResults, String> {
     let client = state.tidal_client.lock().map_err(|e| e.to_string())?;
     client.search(&query, limit)
+}
+
+// ==================== Home Page & Pages API ====================
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct HomePageCached {
+    home: HomePageResponse,
+    is_stale: bool,
+}
+
+#[tauri::command]
+fn get_home_page(state: State<AppState>) -> Result<HomePageCached, String> {
+    let meta = state.load_cache_meta();
+
+    // Try to serve from cache first
+    if meta.home_page_ts > 0 {
+        if let Some(cached) = state.read_cache_file("home_page.json") {
+            if let Ok(home) = serde_json::from_str::<HomePageResponse>(&cached) {
+                let is_stale = !state.is_cache_fresh(meta.home_page_ts);
+                return Ok(HomePageCached { home, is_stale });
+            }
+        }
+    }
+
+    // No valid cache — fetch fresh
+    let client = state.tidal_client.lock().map_err(|e| e.to_string())?;
+    let home = client.get_home_page()?;
+
+    // Cache the result
+    if let Ok(json) = serde_json::to_string(&home) {
+        state.write_cache_file("home_page.json", &json).ok();
+        let mut meta = state.load_cache_meta();
+        meta.home_page_ts = now_secs();
+        state.save_cache_meta(&meta).ok();
+    }
+
+    Ok(HomePageCached { home, is_stale: false })
+}
+
+#[tauri::command]
+fn refresh_home_page(state: State<AppState>) -> Result<HomePageResponse, String> {
+    let client = state.tidal_client.lock().map_err(|e| e.to_string())?;
+    let home = client.get_home_page()?;
+
+    // Update cache
+    if let Ok(json) = serde_json::to_string(&home) {
+        state.write_cache_file("home_page.json", &json).ok();
+        let mut meta = state.load_cache_meta();
+        meta.home_page_ts = now_secs();
+        state.save_cache_meta(&meta).ok();
+    }
+
+    Ok(home)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn get_favorite_artists(state: State<AppState>, user_id: u64, limit: u32) -> Result<Vec<TidalArtistDetail>, String> {
+    let meta = state.load_cache_meta();
+
+    // Try cache
+    if state.is_cache_fresh(meta.favorite_artists_ts) {
+        if let Some(cached) = state.read_cache_file("favorite_artists.json") {
+            if let Ok(artists) = serde_json::from_str::<Vec<TidalArtistDetail>>(&cached) {
+                return Ok(artists);
+            }
+        }
+    }
+
+    let client = state.tidal_client.lock().map_err(|e| e.to_string())?;
+    let artists = client.get_favorite_artists(user_id, limit)?;
+
+    // Cache
+    if let Ok(json) = serde_json::to_string(&artists) {
+        state.write_cache_file("favorite_artists.json", &json).ok();
+        let mut meta = state.load_cache_meta();
+        meta.favorite_artists_ts = now_secs();
+        state.save_cache_meta(&meta).ok();
+    }
+
+    Ok(artists)
+}
+
+#[tauri::command(rename_all = "camelCase")]
+fn get_page_section(state: State<AppState>, api_path: String) -> Result<HomePageResponse, String> {
+    let client = state.tidal_client.lock().map_err(|e| e.to_string())?;
+    client.get_page(&api_path)
+}
+
+/// Debug command: returns the raw JSON structure of multiple page endpoints
+/// so we can see what format Tidal is using and what sections are available.
+#[tauri::command]
+fn debug_home_page_raw(state: State<AppState>) -> Result<String, String> {
+    let client = state.tidal_client.lock().map_err(|e| e.to_string())?;
+    let tokens = client.tokens.as_ref().ok_or("Not authenticated")?;
+
+    let http = reqwest::blocking::Client::new();
+    let mut summary = String::new();
+
+    let endpoints = [
+        "pages/home",
+        "pages/for_you",
+        "pages/my_collection_recently_played",
+        "pages/my_collection_my_mixes",
+        "pages/explore",
+    ];
+
+    for endpoint in &endpoints {
+        summary.push_str(&format!("=== {} ===\n", endpoint));
+
+        let response = http
+            .get(format!("https://api.tidal.com/v1/{}", endpoint))
+            .header("Authorization", format!("Bearer {}", tokens.access_token))
+            .query(&[("countryCode", "US"), ("deviceType", "BROWSER"), ("locale", "en_US")])
+            .send();
+
+        match response {
+            Ok(resp) => {
+                let status = resp.status();
+                if !status.is_success() {
+                    summary.push_str(&format!("  ERROR: status {}\n\n", status));
+                    continue;
+                }
+                let body = resp.text().unwrap_or_default();
+                let json: serde_json::Value = match serde_json::from_str(&body) {
+                    Ok(j) => j,
+                    Err(e) => { summary.push_str(&format!("  PARSE ERROR: {}\n\n", e)); continue; }
+                };
+
+                summary.push_str(&format!("  Top-level keys: {:?}\n",
+                    json.as_object().map(|o| o.keys().collect::<Vec<_>>()).unwrap_or_default()));
+
+                // V1
+                if let Some(rows) = json.get("rows").and_then(|r| r.as_array()) {
+                    summary.push_str(&format!("  FORMAT: V1 (rows), {} rows\n", rows.len()));
+                    for (i, row) in rows.iter().enumerate() {
+                        if let Some(modules) = row.get("modules").and_then(|m| m.as_array()) {
+                            for module in modules {
+                                let mtype = module.get("type").and_then(|t| t.as_str()).unwrap_or("?");
+                                let title = module.get("title").and_then(|t| t.as_str()).unwrap_or("(no title)");
+                                let item_count = module.get("pagedList")
+                                    .and_then(|pl| pl.get("items"))
+                                    .and_then(|i| i.as_array())
+                                    .map(|a| a.len())
+                                    .or_else(|| module.get("highlights").and_then(|h| h.as_array()).map(|a| a.len()))
+                                    .unwrap_or(0);
+                                let has_more = module.get("showMore").is_some();
+                                summary.push_str(&format!("    Row {}: type={:<30} title=\"{}\" items={} more={}\n",
+                                    i, mtype, title, item_count, has_more));
+                            }
+                        }
+                    }
+                }
+
+                // V2
+                if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
+                    summary.push_str(&format!("  FORMAT: V2 (items), {} sections\n", items.len()));
+                    for (i, item) in items.iter().enumerate() {
+                        let stype = item.get("type").and_then(|t| t.as_str()).unwrap_or("?");
+                        let title = item.get("title")
+                            .and_then(|t| t.as_str())
+                            .or_else(|| item.get("titleTextInfo").and_then(|ti| ti.get("text")).and_then(|t| t.as_str()))
+                            .unwrap_or("(no title)");
+                        let item_count = item.get("items").and_then(|i| i.as_array()).map(|a| a.len()).unwrap_or(0);
+                        let has_view_all = item.get("viewAll").is_some() || item.get("showMore").is_some();
+                        let first_type = item.get("items").and_then(|i| i.as_array())
+                            .and_then(|a| a.first()).and_then(|f| f.get("type")).and_then(|t| t.as_str()).unwrap_or("?");
+                        summary.push_str(&format!("    Sec {}: type={:<35} title=\"{}\" items={} first={} more={}\n",
+                            i, stype, title, item_count, first_type, has_view_all));
+                    }
+                }
+            }
+            Err(e) => {
+                summary.push_str(&format!("  FETCH ERROR: {}\n", e));
+            }
+        }
+        summary.push('\n');
+    }
+
+    Ok(summary)
 }
 
 // ==================== Track Metadata (Lyrics, Credits, Radio) ====================
@@ -454,6 +696,11 @@ pub fn run() {
             get_track_lyrics,
             get_track_credits,
             get_track_radio,
+            get_home_page,
+            refresh_home_page,
+            get_favorite_artists,
+            get_page_section,
+            debug_home_page_raw,
             play_tidal_track,
             pause_track,
             resume_track,

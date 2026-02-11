@@ -1,5 +1,6 @@
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::time::Duration;
 
 const TIDAL_AUTH_URL: &str = "https://auth.tidal.com/v1/oauth2";
@@ -185,6 +186,35 @@ pub struct TidalSearchResults {
     pub playlists: Vec<TidalPlaylist>,
     #[serde(default)]
     pub top_hit_type: Option<String>,
+}
+
+// ==================== Home Page / Pages API ====================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TidalArtistDetail {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub picture: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HomePageSection {
+    pub title: String,
+    pub section_type: String,
+    pub items: Value,
+    #[serde(default)]
+    pub has_more: bool,
+    #[serde(default)]
+    pub api_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct HomePageResponse {
+    pub sections: Vec<HomePageSection>,
 }
 
 pub struct TidalClient {
@@ -1075,5 +1105,434 @@ impl TidalClient {
                 .unwrap_or_default(),
             top_hit_type: data.top_hit.and_then(|h| h.hit_type),
         })
+    }
+
+    // ==================== Home Page (Pages API) ====================
+
+    /// Fetch a single page endpoint. Handles both V1 and V2 response formats.
+    fn fetch_page_endpoint(&self, endpoint: &str) -> Result<Vec<HomePageSection>, String> {
+        let tokens = self.tokens.as_ref().ok_or("Not authenticated")?;
+
+        let response = self
+            .client
+            .get(format!("{}/{}", TIDAL_API_URL, endpoint))
+            .header("Authorization", format!("Bearer {}", tokens.access_token))
+            .query(&[
+                ("countryCode", "US"),
+                ("deviceType", "BROWSER"),
+                ("locale", "en_US"),
+            ])
+            .send()
+            .map_err(|e| format!("Failed to fetch {}: {}", endpoint, e))?;
+
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+
+        if !status.is_success() {
+            eprintln!("Page endpoint {} failed ({}): {}", endpoint, status, &body[..body.len().min(200)]);
+            return Ok(vec![]); // Don't fail the whole home page for one endpoint
+        }
+
+        let json: Value = serde_json::from_str(&body)
+            .map_err(|e| format!("Failed to parse {} JSON: {}", endpoint, e))?;
+
+        let result = Self::parse_page_response(&json)?;
+        eprintln!("DEBUG [{}]: parsed {} sections: {:?}", endpoint,
+            result.sections.len(),
+            result.sections.iter().map(|s| format!("\"{}\" ({})", s.title, s.section_type)).collect::<Vec<_>>()
+        );
+        Ok(result.sections)
+    }
+
+    /// Fetch the full home page by calling multiple Tidal page endpoints.
+    /// The Tidal web app builds its home view from several endpoints, not just /pages/home.
+    pub fn get_home_page(&self) -> Result<HomePageResponse, String> {
+        let mut all_sections = Vec::new();
+        let mut seen_titles = std::collections::HashSet::new();
+
+        // Primary home endpoint - has core sections like New Albums, The Hits, etc.
+        let home_sections = self.fetch_page_endpoint("pages/home")?;
+        for s in home_sections {
+            if seen_titles.insert(s.title.clone()) {
+                all_sections.push(s);
+            }
+        }
+
+        // "For You" page - has personalized mixes, radio stations, recommendations
+        let for_you = self.fetch_page_endpoint("pages/for_you");
+        if let Ok(sections) = for_you {
+            for s in sections {
+                if seen_titles.insert(s.title.clone()) {
+                    all_sections.push(s);
+                }
+            }
+        }
+
+        // Recently played - listening history and recently played items
+        let recent = self.fetch_page_endpoint("pages/my_collection_recently_played");
+        if let Ok(sections) = recent {
+            for s in sections {
+                if seen_titles.insert(s.title.clone()) {
+                    all_sections.push(s);
+                }
+            }
+        }
+
+        // My Mixes - personal mixes (My Mix 1-8, My Daily Discovery, etc.)
+        let mixes = self.fetch_page_endpoint("pages/my_collection_my_mixes");
+        if let Ok(sections) = mixes {
+            for s in sections {
+                if seen_titles.insert(s.title.clone()) {
+                    all_sections.push(s);
+                }
+            }
+        }
+
+        // Explore page - popular playlists, trending, editorial picks
+        let explore = self.fetch_page_endpoint("pages/explore");
+        if let Ok(sections) = explore {
+            for s in sections {
+                if seen_titles.insert(s.title.clone()) {
+                    all_sections.push(s);
+                }
+            }
+        }
+
+        eprintln!("DEBUG [home_page]: total {} unique sections", all_sections.len());
+        Ok(HomePageResponse { sections: all_sections })
+    }
+
+    /// Parse a pages API response, supporting both V1 and V2 formats.
+    fn parse_page_response(json: &Value) -> Result<HomePageResponse, String> {
+        let mut sections = Vec::new();
+
+        // ---- V1 format: { rows: [ { modules: [ { type, title, pagedList, ... } ] } ] }
+        if let Some(rows) = json.get("rows").and_then(|r| r.as_array()) {
+            for row in rows {
+                if let Some(modules) = row.get("modules").and_then(|m| m.as_array()) {
+                    for module in modules {
+                        if let Some(sec) = Self::parse_v1_module(module) {
+                            sections.push(sec);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- V2 format: { items: [ { type, title, items: [...], viewAll, ... } ] }
+        if sections.is_empty() {
+            if let Some(top_items) = json.get("items").and_then(|i| i.as_array()) {
+                for item in top_items {
+                    if let Some(sec) = Self::parse_v2_section(item) {
+                        sections.push(sec);
+                    }
+                }
+            }
+        }
+
+        // ---- Fallback: if the response itself looks like a single section
+        //      e.g. { title, items: [...] } from a "view all" endpoint
+        if sections.is_empty() {
+            if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
+                let page_title = json.get("title")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("Results")
+                    .to_string();
+                sections.push(HomePageSection {
+                    title: page_title,
+                    section_type: "MIXED_LIST".to_string(),
+                    items: Value::Array(items.clone()),
+                    has_more: false,
+                    api_path: None,
+                });
+            }
+        }
+
+        Ok(HomePageResponse { sections })
+    }
+
+    /// Parse a V1 module (from rows/modules format).
+    fn parse_v1_module(module: &Value) -> Option<HomePageSection> {
+        let section_type = module.get("type")
+            .and_then(|t| t.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Only skip truly non-content promotional types
+        if section_type == "FEATURED_PROMOTIONS"
+            || section_type == "MULTIPLE_TOP_PROMOTIONS"
+            || section_type == "TEXT_BLOCK"
+            || section_type == "SOCIAL"
+            || section_type == "ARTICLE_LIST"
+        {
+            return None;
+        }
+
+        // Get title - check multiple possible fields
+        let title = module.get("title")
+            .and_then(|t| t.as_str())
+            .or_else(|| module.get("header").and_then(|h| h.as_str()))
+            .unwrap_or("")
+            .to_string();
+
+        // PAGE_LINKS are navigation sections, not content - skip
+        if section_type == "PAGE_LINKS_CLOUD" || section_type == "PAGE_LINKS" {
+            return None;
+        }
+
+        // Allow sections even with empty titles if they have items
+        // (some sections have descriptions but no title)
+
+        // Extract items from pagedList, highlights, or other containers
+        let items = if let Some(paged_list) = module.get("pagedList") {
+            paged_list.get("items").cloned().unwrap_or(Value::Array(vec![]))
+        } else if let Some(highlights) = module.get("highlights") {
+            if let Some(arr) = highlights.as_array() {
+                let unwrapped: Vec<Value> = arr.iter()
+                    .filter_map(|h| h.get("item").cloned())
+                    .collect();
+                Value::Array(unwrapped)
+            } else {
+                Value::Array(vec![])
+            }
+        } else if module.get("mix").is_some() {
+            // MIX_HEADER type - single mix as an item
+            Value::Array(vec![module.get("mix").cloned().unwrap_or(Value::Null)])
+        } else {
+            Value::Array(vec![])
+        };
+
+        // Skip truly empty sections
+        if items.as_array().map(|a| a.is_empty()).unwrap_or(true) && title.is_empty() {
+            return None;
+        }
+
+        // Extract "showMore" or "viewAll" api path - check multiple locations
+        let api_path = module
+            .get("showMore")
+            .and_then(|sm| sm.get("apiPath"))
+            .and_then(|p| p.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| {
+                module
+                    .get("pagedList")
+                    .and_then(|pl| pl.get("dataApiPath"))
+                    .and_then(|p| p.as_str())
+                    .map(|s| s.to_string())
+            })
+            .or_else(|| {
+                module
+                    .get("viewAll")
+                    .and_then(|va| {
+                        if let Some(s) = va.as_str() { Some(s.to_string()) }
+                        else { va.get("apiPath").and_then(|p| p.as_str()).map(|s| s.to_string()) }
+                    })
+            });
+
+        let has_more = api_path.is_some();
+
+        Some(HomePageSection {
+            title,
+            section_type,
+            items,
+            has_more,
+            api_path,
+        })
+    }
+
+    /// Parse a V2 section (from the flat items format).
+    /// V2 sections look like:
+    /// { "type": "HORIZONTAL_LIST", "moduleId": "...", "title": "...",
+    ///   "items": [ { "type": "ALBUM", "data": { ... } }, ... ],
+    ///   "viewAll": "pages/..." }
+    fn parse_v2_section(section: &Value) -> Option<HomePageSection> {
+        let section_type = section.get("type")
+            .and_then(|t| t.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Get title from title field or titleTextInfo
+        let title = section.get("title")
+            .and_then(|t| t.as_str())
+            .map(|s| s.to_string())
+            .or_else(|| {
+                section.get("titleTextInfo")
+                    .and_then(|ti| ti.get("text"))
+                    .and_then(|t| t.as_str())
+                    .map(|s| s.to_string())
+            })
+            .unwrap_or_default();
+
+        if title.is_empty() {
+            return None;
+        }
+
+        // V2 items can be in "items" array, where each has { type, data }
+        let raw_items = section.get("items").and_then(|i| i.as_array());
+
+        let items = if let Some(raw) = raw_items {
+            // Unwrap the "data" field from each item if present,
+            // but keep the item type info by merging it
+            let unwrapped: Vec<Value> = raw.iter()
+                .filter_map(|item| {
+                    if let Some(data) = item.get("data") {
+                        // Merge item-level type into data for identification
+                        let mut merged = data.clone();
+                        if let Some(obj) = merged.as_object_mut() {
+                            if let Some(item_type) = item.get("type").and_then(|t| t.as_str()) {
+                                obj.entry("_itemType".to_string())
+                                    .or_insert(Value::String(item_type.to_string()));
+                            }
+                        }
+                        Some(merged)
+                    } else {
+                        // No "data" wrapper — item is already flat
+                        Some(item.clone())
+                    }
+                })
+                .collect();
+            Value::Array(unwrapped)
+        } else {
+            Value::Array(vec![])
+        };
+
+        // V2 viewAll is either a string or an object
+        let api_path = section.get("viewAll")
+            .and_then(|va| {
+                if let Some(s) = va.as_str() {
+                    Some(s.to_string())
+                } else {
+                    va.get("apiPath").and_then(|p| p.as_str()).map(|s| s.to_string())
+                }
+            })
+            .or_else(|| {
+                section.get("showMore")
+                    .and_then(|sm| sm.get("apiPath"))
+                    .and_then(|p| p.as_str())
+                    .map(|s| s.to_string())
+            });
+
+        let has_more = api_path.is_some();
+
+        // Map V2 section types to something our frontend understands
+        let mapped_type = match section_type.as_str() {
+            "SHORTCUT_LIST" => "SHORTCUT_LIST",
+            "HORIZONTAL_LIST" | "HORIZONTAL_LIST_WITH_CONTEXT" => {
+                // Try to detect the content type from items
+                if let Some(arr) = items.as_array() {
+                    if let Some(first) = arr.first() {
+                        let item_type = first.get("_itemType")
+                            .or_else(|| first.get("type"))
+                            .and_then(|t| t.as_str())
+                            .unwrap_or("");
+                        match item_type {
+                            "MIX" => "MIX_LIST",
+                            "ALBUM" => "ALBUM_LIST",
+                            "PLAYLIST" => "PLAYLIST_LIST",
+                            "ARTIST" => "ARTIST_LIST",
+                            "TRACK" => "TRACK_LIST",
+                            _ => {
+                                // Detect by data shape
+                                if first.get("mixType").is_some() || first.get("mixImages").is_some() {
+                                    "MIX_LIST"
+                                } else if first.get("uuid").is_some() {
+                                    "PLAYLIST_LIST"
+                                } else if first.get("cover").is_some() || first.get("numberOfTracks").is_some() {
+                                    "ALBUM_LIST"
+                                } else if first.get("picture").is_some() && first.get("cover").is_none() {
+                                    "ARTIST_LIST"
+                                } else {
+                                    "MIXED_TYPES_LIST"
+                                }
+                            }
+                        }
+                    } else {
+                        "MIXED_TYPES_LIST"
+                    }
+                } else {
+                    "MIXED_TYPES_LIST"
+                }
+            }
+            "TRACK_LIST" => "TRACK_LIST",
+            other => other,
+        };
+
+        Some(HomePageSection {
+            title,
+            section_type: mapped_type.to_string(),
+            items,
+            has_more,
+            api_path,
+        })
+    }
+
+    pub fn get_favorite_artists(&self, user_id: u64, limit: u32) -> Result<Vec<TidalArtistDetail>, String> {
+        let tokens = self.tokens.as_ref().ok_or("Not authenticated")?;
+
+        let response = self
+            .client
+            .get(format!("{}/users/{}/favorites/artists", TIDAL_API_URL, user_id))
+            .header("Authorization", format!("Bearer {}", tokens.access_token))
+            .query(&[
+                ("countryCode", "US"),
+                ("limit", &limit.to_string()),
+                ("offset", "0"),
+                ("order", "DATE"),
+                ("orderDirection", "DESC"),
+            ])
+            .send()
+            .map_err(|e| format!("Failed to fetch favorite artists: {}", e))?;
+
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+
+        if !status.is_success() {
+            return Err(format!("API error ({}): {}", status, body));
+        }
+
+        #[derive(Deserialize)]
+        struct FavoriteArtistItem {
+            item: TidalArtistDetail,
+        }
+
+        #[derive(Deserialize)]
+        struct FavoriteArtistsResponse {
+            items: Vec<FavoriteArtistItem>,
+        }
+
+        let data = serde_json::from_str::<FavoriteArtistsResponse>(&body)
+            .map_err(|e| format!("Failed to parse favorite artists: {} - Body: {}", e, &body[..body.len().min(500)]))?;
+
+        Ok(data.items.into_iter().map(|f| f.item).collect())
+    }
+
+    pub fn get_page(&self, api_path: &str) -> Result<HomePageResponse, String> {
+        let tokens = self.tokens.as_ref().ok_or("Not authenticated")?;
+
+        let url = if api_path.starts_with("http") {
+            api_path.to_string()
+        } else {
+            format!("{}/{}", TIDAL_API_URL, api_path)
+        };
+
+        let response = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", tokens.access_token))
+            .query(&[("countryCode", "US"), ("deviceType", "BROWSER")])
+            .send()
+            .map_err(|e| format!("Failed to fetch page: {}", e))?;
+
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+
+        if !status.is_success() {
+            return Err(format!("Page API error ({}): {}", status, body));
+        }
+
+        let json: Value = serde_json::from_str(&body)
+            .map_err(|e| format!("Failed to parse page JSON: {}", e))?;
+
+        Self::parse_page_response(&json)
     }
 }
