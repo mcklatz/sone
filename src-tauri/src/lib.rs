@@ -480,6 +480,9 @@ fn debug_home_page_raw(state: State<AppState>) -> Result<String, String> {
         "pages/my_collection_recently_played",
         "pages/my_collection_my_mixes",
         "pages/explore",
+        "pages/suggested_new_tracks_for_you",
+        "pages/suggested_new_albums_for_you",
+        "pages/show/essential_album",
     ];
 
     for endpoint in &endpoints {

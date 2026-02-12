@@ -37,6 +37,9 @@ function getItemImage(item: any, size: number = 320): string {
   if (item.album?.cover) return getTidalImageUrl(item.album.cover, size);
   // V2 imageUrl direct
   if (item.imageUrl) return item.imageUrl;
+  // Video items
+  if (item.imageId) return getTidalImageUrl(item.imageId, size);
+  if (item.imagePath) return `https://resources.tidal.com/images/${item.imagePath.replace(/-/g, "/")}/${size}x${size}.jpg`;
   return "";
 }
 

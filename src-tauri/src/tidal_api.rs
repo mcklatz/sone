@@ -1141,7 +1141,53 @@ impl TidalClient {
             result.sections.len(),
             result.sections.iter().map(|s| format!("\"{}\" ({})", s.title, s.section_type)).collect::<Vec<_>>()
         );
+
+        // If we got 0 sections, log the top-level keys for debugging
+        if result.sections.is_empty() {
+            if let Some(obj) = json.as_object() {
+                let keys: Vec<&String> = obj.keys().collect();
+                eprintln!("DEBUG [{}]: 0 sections parsed, top-level keys: {:?}", endpoint, keys);
+            }
+        }
+
         Ok(result.sections)
+    }
+
+    /// Build a dedup key from a section: uses title + first 3 item IDs.
+    /// This ensures sections with the same title but different content are kept.
+    fn section_dedup_key(s: &HomePageSection) -> String {
+        let mut key = s.title.clone();
+        if let Some(items) = s.items.as_array() {
+            for item in items.iter().take(3) {
+                let id = item.get("id").and_then(|i| i.as_u64()).map(|i| i.to_string())
+                    .or_else(|| item.get("uuid").and_then(|u| u.as_str()).map(|s| s.to_string()))
+                    .or_else(|| item.get("mixId").and_then(|m| m.as_str()).map(|s| s.to_string()))
+                    .unwrap_or_default();
+                key.push('|');
+                key.push_str(&id);
+            }
+        }
+        key
+    }
+
+    /// Helper: add sections to the collection, deduplicating smartly.
+    /// Skips sections with empty titles.
+    /// Uses title + item IDs for dedup key so same-title sections with different content are kept.
+    fn add_unique_sections(
+        all: &mut Vec<HomePageSection>,
+        seen: &mut std::collections::HashSet<String>,
+        new_sections: Vec<HomePageSection>,
+    ) {
+        for s in new_sections {
+            // Skip sections with empty/blank titles
+            if s.title.trim().is_empty() {
+                continue;
+            }
+            let key = Self::section_dedup_key(&s);
+            if seen.insert(key) {
+                all.push(s);
+            }
+        }
     }
 
     /// Fetch the full home page by calling multiple Tidal page endpoints.
@@ -1152,57 +1198,140 @@ impl TidalClient {
 
         // Primary home endpoint - has core sections like New Albums, The Hits, etc.
         let home_sections = self.fetch_page_endpoint("pages/home")?;
-        for s in home_sections {
-            if seen_titles.insert(s.title.clone()) {
-                all_sections.push(s);
-            }
-        }
+        Self::add_unique_sections(&mut all_sections, &mut seen_titles, home_sections);
 
         // "For You" page - has personalized mixes, radio stations, recommendations
-        let for_you = self.fetch_page_endpoint("pages/for_you");
-        if let Ok(sections) = for_you {
-            for s in sections {
-                if seen_titles.insert(s.title.clone()) {
-                    all_sections.push(s);
-                }
-            }
-        }
-
-        // Recently played - listening history and recently played items
-        let recent = self.fetch_page_endpoint("pages/my_collection_recently_played");
-        if let Ok(sections) = recent {
-            for s in sections {
-                if seen_titles.insert(s.title.clone()) {
-                    all_sections.push(s);
-                }
-            }
+        if let Ok(sections) = self.fetch_page_endpoint("pages/for_you") {
+            Self::add_unique_sections(&mut all_sections, &mut seen_titles, sections);
         }
 
         // My Mixes - personal mixes (My Mix 1-8, My Daily Discovery, etc.)
-        let mixes = self.fetch_page_endpoint("pages/my_collection_my_mixes");
-        if let Ok(sections) = mixes {
-            for s in sections {
-                if seen_titles.insert(s.title.clone()) {
-                    all_sections.push(s);
-                }
-            }
+        // Note: pages/my_collection_my_mixes often returns untitled sections that
+        // duplicate pages/for_you content, so we only add titled unique ones.
+        if let Ok(sections) = self.fetch_page_endpoint("pages/my_collection_my_mixes") {
+            Self::add_unique_sections(&mut all_sections, &mut seen_titles, sections);
         }
 
         // Explore page - popular playlists, trending, editorial picks
-        let explore = self.fetch_page_endpoint("pages/explore");
-        if let Ok(sections) = explore {
-            for s in sections {
-                if seen_titles.insert(s.title.clone()) {
-                    all_sections.push(s);
-                }
+        for endpoint in &[
+            "pages/explore",
+        ] {
+            if let Ok(sections) = self.fetch_page_endpoint(endpoint) {
+                Self::add_unique_sections(&mut all_sections, &mut seen_titles, sections);
             }
         }
+
+        // Recently played / listening history
+        if let Ok(sections) = self.fetch_page_endpoint("pages/my_collection_recently_played") {
+            Self::add_unique_sections(&mut all_sections, &mut seen_titles, sections);
+        }
+
+        // Video content endpoint - disabled for now since the app can't play video
+        // if let Ok(sections) = self.fetch_page_endpoint("pages/videos") {
+        //     Self::add_unique_sections(&mut all_sections, &mut seen_titles, sections);
+        // }
+
+        // Rising / trending content - rename generic titles to avoid confusion
+        if let Ok(mut sections) = self.fetch_page_endpoint("pages/rising") {
+            let rename_map: std::collections::HashMap<&str, &str> = [
+                ("Playlists", "Popular playlists on TIDAL"),
+                ("New Tracks", "Rising new tracks"),
+                ("New Albums", "Rising new albums"),
+                ("Artists", "Rising artists"),
+                // Video sections disabled since the app can't play video
+                // ("Video Playlists", "Rising video playlists"),
+                // ("New Videos", "Rising new videos"),
+            ].iter().cloned().collect();
+
+            // Filter out video sections since we can't play video
+            sections.retain(|s| s.section_type != "VIDEO_LIST"
+                && s.title != "Video Playlists"
+                && s.title != "New Videos");
+
+            for sec in &mut sections {
+                if let Some(new_title) = rename_map.get(sec.title.as_str()) {
+                    sec.title = new_title.to_string();
+                }
+            }
+            Self::add_unique_sections(&mut all_sections, &mut seen_titles, sections);
+        }
+
+        // ---- Build synthetic sections from user data ----
+        if let Some(user_id) = self.tokens.as_ref().and_then(|t| t.user_id) {
+            // "Your listening history" from recently favorited tracks
+            match self.get_listening_history(user_id) {
+                Ok(tracks) if tracks.as_array().map(|a| !a.is_empty()).unwrap_or(false) => {
+                    all_sections.push(HomePageSection {
+                        title: "Your listening history".to_string(),
+                        section_type: "TRACK_LIST".to_string(),
+                        items: tracks,
+                        has_more: false,
+                        api_path: None,
+                    });
+                }
+                Ok(_) => {}
+                Err(e) => eprintln!("DEBUG: Failed to get listening history: {}", e),
+            }
+
+            // "Albums you might like" from user's favorite albums
+            match self.get_favorite_albums_raw(user_id, 20) {
+                Ok(albums) if albums.as_array().map(|a| !a.is_empty()).unwrap_or(false) => {
+                    all_sections.push(HomePageSection {
+                        title: "Albums you'll enjoy".to_string(),
+                        section_type: "ALBUM_LIST".to_string(),
+                        items: albums,
+                        has_more: false,
+                        api_path: None,
+                    });
+                }
+                Ok(_) => {}
+                Err(e) => eprintln!("DEBUG: Failed to get favorite albums: {}", e),
+            }
+
+            // "Playlists you'll love" from user's playlists
+            match self.get_user_playlists_raw(user_id, 20) {
+                Ok(playlists) if playlists.as_array().map(|a| !a.is_empty()).unwrap_or(false) => {
+                    all_sections.push(HomePageSection {
+                        title: "Playlists you'll love".to_string(),
+                        section_type: "PLAYLIST_LIST".to_string(),
+                        items: playlists,
+                        has_more: false,
+                        api_path: None,
+                    });
+                }
+                Ok(_) => {}
+                Err(e) => eprintln!("DEBUG: Failed to get user playlists for section: {}", e),
+            }
+        }
+
+        // Reorder sections for a better home page flow:
+        // 1. Core editorial (from /home) stays at top
+        // 2. Personalized content next
+        // 3. Synthetic/user sections
+        // 4. Video and rising content last
+        let priority_order = |title: &str| -> u8 {
+            match title {
+                // Core editorial sections first
+                "The Hits" | "New Tracks" | "New Albums" | "From our editors" | "Spotlighted Uploads" => 0,
+                // Personalized content
+                t if t.contains("Custom mixes") || t.contains("Radio stations") || t.contains("releases for you") => 1,
+                // User data sections
+                "Your favorite artists" | "Your listening history" | "Albums you'll enjoy" | "Playlists you'll love" => 2,
+                // Video content
+                t if t.contains("Video") || t.contains("video") || t.contains("Classics") => 3,
+                // Rising/trending
+                t if t.contains("Rising") || t.contains("Popular") => 4,
+                _ => 2, // default: mix in with personalized
+            }
+        };
+
+        all_sections.sort_by_key(|s| priority_order(&s.title));
 
         eprintln!("DEBUG [home_page]: total {} unique sections", all_sections.len());
         Ok(HomePageResponse { sections: all_sections })
     }
 
-    /// Parse a pages API response, supporting both V1 and V2 formats.
+    /// Parse a pages API response, supporting V1, V2, and tab/category formats.
     fn parse_page_response(json: &Value) -> Result<HomePageResponse, String> {
         let mut sections = Vec::new();
 
@@ -1222,8 +1351,64 @@ impl TidalClient {
         // ---- V2 format: { items: [ { type, title, items: [...], viewAll, ... } ] }
         if sections.is_empty() {
             if let Some(top_items) = json.get("items").and_then(|i| i.as_array()) {
-                for item in top_items {
-                    if let Some(sec) = Self::parse_v2_section(item) {
+                // Check if items look like V2 sections (objects with type/title/items)
+                // vs just being raw content items
+                let looks_like_sections = top_items.first()
+                    .map(|f| f.get("items").is_some() || f.get("type").and_then(|t| t.as_str())
+                        .map(|t| t.contains("LIST") || t == "SHORTCUT_LIST" || t == "PAGE_LINKS_CLOUD")
+                        .unwrap_or(false))
+                    .unwrap_or(false);
+
+                if looks_like_sections {
+                    for item in top_items {
+                        if let Some(sec) = Self::parse_v2_section(item) {
+                            sections.push(sec);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- Tab format: { tabs: [ { title, items: [...] } ] }
+        // The explore page often uses a tabs-based structure
+        if sections.is_empty() {
+            if let Some(tabs) = json.get("tabs").and_then(|t| t.as_array()) {
+                for tab in tabs {
+                    // Each tab may contain rows (V1) or items (V2) inside it
+                    if let Some(rows) = tab.get("rows").and_then(|r| r.as_array()) {
+                        for row in rows {
+                            if let Some(modules) = row.get("modules").and_then(|m| m.as_array()) {
+                                for module in modules {
+                                    if let Some(sec) = Self::parse_v1_module(module) {
+                                        sections.push(sec);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if let Some(items) = tab.get("items").and_then(|i| i.as_array()) {
+                        for item in items {
+                            if let Some(sec) = Self::parse_v2_section(item) {
+                                sections.push(sec);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- Categories format: { categories: [...] } or { sections: [...] }
+        if sections.is_empty() {
+            let containers = [
+                json.get("categories").and_then(|c| c.as_array()),
+                json.get("sections").and_then(|s| s.as_array()),
+            ];
+            for container in containers.into_iter().flatten() {
+                for item in container {
+                    // Try V1 module parsing first, then V2
+                    if let Some(sec) = Self::parse_v1_module(item) {
+                        sections.push(sec);
+                    } else if let Some(sec) = Self::parse_v2_section(item) {
                         sections.push(sec);
                     }
                 }
@@ -1283,7 +1468,7 @@ impl TidalClient {
         // Allow sections even with empty titles if they have items
         // (some sections have descriptions but no title)
 
-        // Extract items from pagedList, highlights, or other containers
+        // Extract items from pagedList, highlights, listItems, or other containers
         let items = if let Some(paged_list) = module.get("pagedList") {
             paged_list.get("items").cloned().unwrap_or(Value::Array(vec![]))
         } else if let Some(highlights) = module.get("highlights") {
@@ -1295,15 +1480,34 @@ impl TidalClient {
             } else {
                 Value::Array(vec![])
             }
+        } else if let Some(list_items) = module.get("listItems").and_then(|l| l.as_array()) {
+            // Some modules use "listItems" instead of "pagedList"
+            Value::Array(list_items.clone())
         } else if module.get("mix").is_some() {
             // MIX_HEADER type - single mix as an item
             Value::Array(vec![module.get("mix").cloned().unwrap_or(Value::Null)])
         } else {
-            Value::Array(vec![])
+            // Last resort: look for any array field that looks like items
+            let mut found = Value::Array(vec![]);
+            if let Some(obj) = module.as_object() {
+                for (key, val) in obj {
+                    if key == "type" || key == "title" || key == "header" || key == "showMore"
+                        || key == "viewAll" || key == "description" || key == "id" || key == "selfLink" {
+                        continue;
+                    }
+                    if let Some(arr) = val.as_array() {
+                        if !arr.is_empty() && arr[0].is_object() {
+                            found = val.clone();
+                            break;
+                        }
+                    }
+                }
+            }
+            found
         };
 
         // Skip truly empty sections
-        if items.as_array().map(|a| a.is_empty()).unwrap_or(true) && title.is_empty() {
+        if items.as_array().map(|a| a.is_empty()).unwrap_or(true) {
             return None;
         }
 
@@ -1504,6 +1708,124 @@ impl TidalClient {
             .map_err(|e| format!("Failed to parse favorite artists: {} - Body: {}", e, &body[..body.len().min(500)]))?;
 
         Ok(data.items.into_iter().map(|f| f.item).collect())
+    }
+
+    /// Fetch user's favorite albums as raw JSON for home page sections.
+    fn get_favorite_albums_raw(&self, user_id: u64, limit: u32) -> Result<Value, String> {
+        let tokens = self.tokens.as_ref().ok_or("Not authenticated")?;
+
+        let response = self
+            .client
+            .get(format!("{}/users/{}/favorites/albums", TIDAL_API_URL, user_id))
+            .header("Authorization", format!("Bearer {}", tokens.access_token))
+            .query(&[
+                ("countryCode", "US"),
+                ("limit", &limit.to_string()),
+                ("offset", "0"),
+                ("order", "DATE"),
+                ("orderDirection", "DESC"),
+            ])
+            .send()
+            .map_err(|e| format!("Failed to fetch favorite albums: {}", e))?;
+
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+
+        if !status.is_success() {
+            return Err(format!("Favorite albums API error ({}): {}", status, body));
+        }
+
+        let json: Value = serde_json::from_str(&body)
+            .map_err(|e| format!("Failed to parse favorite albums: {}", e))?;
+
+        // Response format: { items: [ { item: { id, title, cover, artist, ... }, created: "..." } ] }
+        if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
+            let albums: Vec<Value> = items.iter()
+                .filter_map(|entry| entry.get("item").cloned())
+                .collect();
+            eprintln!("DEBUG [favorite_albums]: got {} albums", albums.len());
+            Ok(Value::Array(albums))
+        } else {
+            Ok(Value::Array(vec![]))
+        }
+    }
+
+    /// Fetch user's playlists as raw JSON for home page sections.
+    fn get_user_playlists_raw(&self, user_id: u64, limit: u32) -> Result<Value, String> {
+        let tokens = self.tokens.as_ref().ok_or("Not authenticated")?;
+
+        let response = self
+            .client
+            .get(format!("{}/users/{}/playlists", TIDAL_API_URL, user_id))
+            .header("Authorization", format!("Bearer {}", tokens.access_token))
+            .query(&[
+                ("countryCode", "US"),
+                ("limit", &limit.to_string()),
+                ("offset", "0"),
+                ("order", "DATE"),
+                ("orderDirection", "DESC"),
+            ])
+            .send()
+            .map_err(|e| format!("Failed to fetch user playlists: {}", e))?;
+
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+
+        if !status.is_success() {
+            return Err(format!("User playlists API error ({}): {}", status, body));
+        }
+
+        let json: Value = serde_json::from_str(&body)
+            .map_err(|e| format!("Failed to parse user playlists: {}", e))?;
+
+        // Response format: { items: [ { uuid, title, image, ... } ] }
+        if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
+            eprintln!("DEBUG [user_playlists]: got {} playlists", items.len());
+            Ok(Value::Array(items.clone()))
+        } else {
+            Ok(Value::Array(vec![]))
+        }
+    }
+
+    /// Fetch user's recently played tracks for the "listening history" section.
+    fn get_listening_history(&self, user_id: u64) -> Result<Value, String> {
+        let tokens = self.tokens.as_ref().ok_or("Not authenticated")?;
+
+        // Try the user's listening history via favorites/tracks (recent order)
+        let response = self
+            .client
+            .get(format!("{}/users/{}/favorites/tracks", TIDAL_API_URL, user_id))
+            .header("Authorization", format!("Bearer {}", tokens.access_token))
+            .query(&[
+                ("countryCode", "US"),
+                ("limit", "12"),
+                ("offset", "0"),
+                ("order", "DATE"),
+                ("orderDirection", "DESC"),
+            ])
+            .send()
+            .map_err(|e| format!("Failed to fetch listening history: {}", e))?;
+
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+
+        if !status.is_success() {
+            return Err(format!("Listening history API error ({}): {}", status, body));
+        }
+
+        let json: Value = serde_json::from_str(&body)
+            .map_err(|e| format!("Failed to parse listening history: {}", e))?;
+
+        // Response format: { items: [ { item: { id, title, artist, album, ... }, created: "..." } ] }
+        if let Some(items) = json.get("items").and_then(|i| i.as_array()) {
+            let tracks: Vec<Value> = items.iter()
+                .filter_map(|entry| entry.get("item").cloned())
+                .collect();
+            eprintln!("DEBUG [listening_history]: got {} tracks", tracks.len());
+            Ok(Value::Array(tracks))
+        } else {
+            Ok(Value::Array(vec![]))
+        }
     }
 
     pub fn get_page(&self, api_path: &str) -> Result<HomePageResponse, String> {
