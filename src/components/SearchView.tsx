@@ -7,16 +7,18 @@ import {
   type Track,
   type AlbumDetail,
   type Playlist,
+  type DirectHitItem,
   type MediaItemType,
 } from "../hooks/useAudio";
 import TidalImage from "./TidalImage";
 import MediaContextMenu from "./MediaContextMenu";
 import ReusableTrackList from "./TrackList";
 
-type SearchTab = "top" | "tracks" | "artists" | "albums" | "playlists";
+type SearchTab = "all" | "tophits" | "tracks" | "playlists" | "albums" | "artists";
 
 const TABS: { id: SearchTab; label: string }[] = [
-  { id: "top", label: "Top results" },
+  { id: "all", label: "All Results" },
+  { id: "tophits", label: "Top Hits" },
   { id: "tracks", label: "Tracks" },
   { id: "playlists", label: "Playlists" },
   { id: "albums", label: "Albums" },
@@ -41,7 +43,7 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<SearchTab>("top");
+  const [activeTab, setActiveTab] = useState<SearchTab>("all");
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -182,8 +184,8 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
 
         {results && !noResults && (
           <div className="pb-8">
-            {/* Top Results */}
-            {activeTab === "top" && (
+            {/* All Results tab — grouped sections: Tracks, Playlists, Albums, Artists */}
+            {activeTab === "all" && (
               <div className="flex flex-col gap-8">
                 {results.tracks.length > 0 && (
                   <section>
@@ -197,6 +199,30 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
                       showArtist={true}
                       showAlbum={true}
                       context="search"
+                    />
+                  </section>
+                )}
+                {results.playlists.length > 0 && (
+                  <section>
+                    <h2 className="text-[16px] font-bold text-white mb-3">
+                      Playlists
+                    </h2>
+                    <PlaylistGrid
+                      playlists={results.playlists.slice(0, 6)}
+                      onPlaylistClick={navigateToPlaylist}
+                      onContextMenu={handlePlaylistContextMenu}
+                    />
+                  </section>
+                )}
+                {results.albums.length > 0 && (
+                  <section>
+                    <h2 className="text-[16px] font-bold text-white mb-3">
+                      Albums
+                    </h2>
+                    <AlbumGrid
+                      albums={results.albums.slice(0, 6)}
+                      onAlbumClick={navigateToAlbum}
+                      onContextMenu={handleAlbumContextMenu}
                     />
                   </section>
                 )}
@@ -216,31 +242,34 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
                     />
                   </section>
                 )}
-                {results.albums.length > 0 && (
-                  <section>
-                    <h2 className="text-[16px] font-bold text-white mb-3">
-                      Albums
-                    </h2>
-                    <AlbumGrid
-                      albums={results.albums.slice(0, 6)}
-                      onAlbumClick={navigateToAlbum}
-                      onContextMenu={handleAlbumContextMenu}
-                    />
-                  </section>
-                )}
-                {results.playlists.length > 0 && (
-                  <section>
-                    <h2 className="text-[16px] font-bold text-white mb-3">
-                      Playlists
-                    </h2>
-                    <PlaylistGrid
-                      playlists={results.playlists.slice(0, 6)}
-                      onPlaylistClick={navigateToPlaylist}
-                      onContextMenu={handlePlaylistContextMenu}
-                    />
-                  </section>
-                )}
               </div>
+            )}
+
+            {/* Top Hits tab — mixed entity types in API relevance order */}
+            {activeTab === "tophits" && (
+              <TopHitsList
+                topHits={results.topHits || []}
+                onPlayTrack={(hit) => {
+                  const trackObj: Track = {
+                    id: hit.id || 0,
+                    title: hit.title || "",
+                    duration: hit.duration || 0,
+                    artist: hit.artistName ? { id: 0, name: hit.artistName } : undefined,
+                    album: hit.albumId ? { id: hit.albumId, title: hit.albumTitle || "", cover: hit.albumCover } : undefined,
+                  };
+                  setQueueTracks([]);
+                  playTrack(trackObj);
+                }}
+                onAlbumClick={(hit) => {
+                  if (hit.id) navigateToAlbum(hit.id, { title: hit.title || "", cover: hit.cover, artistName: hit.artistName });
+                }}
+                onArtistClick={(hit) => {
+                  if (hit.id) navigateToArtist(hit.id, { name: hit.name || "", picture: hit.picture });
+                }}
+                onPlaylistClick={(hit) => {
+                  if (hit.uuid) navigateToPlaylist(hit.uuid, { title: hit.title || "", image: hit.image });
+                }}
+              />
             )}
 
             {/* Tracks tab */}
@@ -255,16 +284,12 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
               />
             )}
 
-            {/* Artists tab */}
-            {activeTab === "artists" && results.artists.length > 0 && (
-              <ArtistGrid
-                artists={results.artists}
-                onArtistClick={(artist) =>
-                  navigateToArtist(artist.id, {
-                    name: artist.name,
-                    picture: artist.picture,
-                  })
-                }
+            {/* Playlists tab */}
+            {activeTab === "playlists" && results.playlists.length > 0 && (
+              <PlaylistGrid
+                playlists={results.playlists}
+                onPlaylistClick={navigateToPlaylist}
+                onContextMenu={handlePlaylistContextMenu}
                 large
               />
             )}
@@ -279,12 +304,16 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
               />
             )}
 
-            {/* Playlists tab */}
-            {activeTab === "playlists" && results.playlists.length > 0 && (
-              <PlaylistGrid
-                playlists={results.playlists}
-                onPlaylistClick={navigateToPlaylist}
-                onContextMenu={handlePlaylistContextMenu}
+            {/* Artists tab */}
+            {activeTab === "artists" && results.artists.length > 0 && (
+              <ArtistGrid
+                artists={results.artists}
+                onArtistClick={(artist) =>
+                  navigateToArtist(artist.id, {
+                    name: artist.name,
+                    picture: artist.picture,
+                  })
+                }
                 large
               />
             )}
@@ -424,6 +453,145 @@ function AlbumGrid({
           </p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function TopHitsList({
+  topHits,
+  onPlayTrack,
+  onAlbumClick,
+  onArtistClick,
+  onPlaylistClick,
+}: {
+  topHits: DirectHitItem[];
+  onPlayTrack: (hit: DirectHitItem) => void;
+  onAlbumClick: (hit: DirectHitItem) => void;
+  onArtistClick: (hit: DirectHitItem) => void;
+  onPlaylistClick: (hit: DirectHitItem) => void;
+}) {
+  if (topHits.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-[#535353]">
+        <Search size={48} className="mb-4" />
+        <p className="text-white font-semibold text-lg mb-1">No top hits</p>
+        <p className="text-sm">Try the other tabs for more results</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col">
+      {topHits.map((hit, idx) => {
+        if (hit.hitType === "TRACKS") {
+          return (
+            <button
+              key={`th-${idx}`}
+              onClick={() => onPlayTrack(hit)}
+              className="w-full flex items-center gap-4 px-3 py-3 hover:bg-white/6 rounded-md transition-colors text-left group"
+            >
+              <div className="w-12 h-12 rounded bg-[#282828] overflow-hidden shrink-0">
+                <TidalImage
+                  src={getTidalImageUrl(hit.albumCover, 80)}
+                  alt={hit.title || ""}
+                  className="w-full h-full"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] text-white truncate">{hit.title}</p>
+                <p className="text-[12px] text-[#808080] truncate">
+                  Track &middot; {hit.artistName || "Unknown Artist"}
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-[#00FFFF] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <Play size={16} fill="black" className="text-black ml-0.5" />
+              </div>
+            </button>
+          );
+        }
+        if (hit.hitType === "ALBUMS") {
+          return (
+            <button
+              key={`th-${idx}`}
+              onClick={() => onAlbumClick(hit)}
+              className="w-full flex items-center gap-4 px-3 py-3 hover:bg-white/6 rounded-md transition-colors text-left group"
+            >
+              <div className="w-12 h-12 rounded bg-[#282828] overflow-hidden shrink-0">
+                <TidalImage
+                  src={getTidalImageUrl(hit.cover, 80)}
+                  alt={hit.title || ""}
+                  className="w-full h-full"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] text-white truncate">{hit.title}</p>
+                <p className="text-[12px] text-[#808080] truncate">
+                  Album &middot; {hit.artistName || "Unknown"}
+                  {hit.numberOfTracks ? ` · ${hit.numberOfTracks} tracks` : ""}
+                </p>
+              </div>
+            </button>
+          );
+        }
+        if (hit.hitType === "ARTISTS") {
+          return (
+            <button
+              key={`th-${idx}`}
+              onClick={() => onArtistClick(hit)}
+              className="w-full flex items-center gap-4 px-3 py-3 hover:bg-white/6 rounded-md transition-colors text-left group"
+            >
+              <div className="w-12 h-12 rounded-full bg-[#282828] overflow-hidden shrink-0">
+                {hit.picture ? (
+                  <TidalImage
+                    src={getTidalImageUrl(hit.picture, 80)}
+                    alt={hit.name || ""}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <User size={20} className="text-[#535353]" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] text-white truncate font-medium">{hit.name}</p>
+                <p className="text-[12px] text-[#808080]">Artist</p>
+              </div>
+            </button>
+          );
+        }
+        if (hit.hitType === "PLAYLISTS") {
+          return (
+            <button
+              key={`th-${idx}`}
+              onClick={() => onPlaylistClick(hit)}
+              className="w-full flex items-center gap-4 px-3 py-3 hover:bg-white/6 rounded-md transition-colors text-left group"
+            >
+              <div className="w-12 h-12 rounded bg-[#282828] overflow-hidden shrink-0">
+                {hit.image ? (
+                  <TidalImage
+                    src={getTidalImageUrl(hit.image, 80)}
+                    alt={hit.title || ""}
+                    type="playlist"
+                    className="w-full h-full"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Music size={20} className="text-[#535353]" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] text-white truncate">{hit.title}</p>
+                <p className="text-[12px] text-[#808080] truncate">
+                  Playlist{hit.numberOfTracks ? ` · ${hit.numberOfTracks} tracks` : ""}
+                </p>
+              </div>
+            </button>
+          );
+        }
+        return null;
+      })}
     </div>
   );
 }

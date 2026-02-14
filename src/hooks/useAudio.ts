@@ -96,6 +96,7 @@ export interface SearchResults {
   tracks: Track[];
   playlists: Playlist[];
   topHitType?: string;
+  topHits?: DirectHitItem[];
 }
 
 export interface DirectHitItem {

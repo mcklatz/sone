@@ -218,6 +218,9 @@ pub struct TidalSearchResults {
     pub playlists: Vec<TidalPlaylist>,
     #[serde(default)]
     pub top_hit_type: Option<String>,
+    /// Ordered top hits from the v2 search API (mixed entity types, ranked by relevance)
+    #[serde(default)]
+    pub top_hits: Vec<DirectHitItem>,
 }
 
 // ==================== Suggestions / Mini-search ====================
@@ -257,6 +260,109 @@ pub struct DirectHitItem {
     pub duration: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number_of_tracks: Option<u32>,
+}
+
+impl DirectHitItem {
+    /// Parse a JSON item with { "type": "ARTISTS"|"ALBUMS"|..., "value": {...} } into a DirectHitItem.
+    /// Returns None if the type is unrecognized or value is missing.
+    pub fn from_typed_value(item: &serde_json::Value) -> Option<Self> {
+        let hit_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let val = item.get("value")?;
+
+        match hit_type.as_str() {
+            "ARTISTS" => Some(DirectHitItem {
+                hit_type,
+                id: val.get("id").and_then(|v| v.as_u64()),
+                uuid: None,
+                name: val.get("name").and_then(|v| v.as_str()).map(String::from),
+                title: None,
+                picture: val.get("picture").and_then(|v| v.as_str()).map(String::from),
+                cover: None,
+                image: None,
+                artist_name: None,
+                album_id: None,
+                album_title: None,
+                album_cover: None,
+                duration: None,
+                number_of_tracks: None,
+            }),
+            "ALBUMS" => {
+                let artist_name = val.get("artists")
+                    .and_then(|a| a.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|a| a.get("name").and_then(|v| v.as_str()))
+                    .or_else(|| val.get("artist").and_then(|a| a.get("name").and_then(|v| v.as_str())))
+                    .map(String::from);
+                Some(DirectHitItem {
+                    hit_type,
+                    id: val.get("id").and_then(|v| v.as_u64()),
+                    uuid: None,
+                    name: None,
+                    title: val.get("title").and_then(|v| v.as_str()).map(String::from),
+                    picture: None,
+                    cover: val.get("cover").and_then(|v| v.as_str()).map(String::from),
+                    image: None,
+                    artist_name,
+                    album_id: None,
+                    album_title: None,
+                    album_cover: None,
+                    duration: val.get("duration").and_then(|v| v.as_u64()).map(|d| d as u32),
+                    number_of_tracks: val.get("numberOfTracks").and_then(|v| v.as_u64()).map(|n| n as u32),
+                })
+            },
+            "TRACKS" => {
+                let artist_name = val.get("artists")
+                    .and_then(|a| a.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|a| a.get("name").and_then(|v| v.as_str()))
+                    .or_else(|| val.get("artist").and_then(|a| a.get("name").and_then(|v| v.as_str())))
+                    .map(String::from);
+                let album = val.get("album");
+                Some(DirectHitItem {
+                    hit_type,
+                    id: val.get("id").and_then(|v| v.as_u64()),
+                    uuid: None,
+                    name: None,
+                    title: val.get("title").and_then(|v| v.as_str()).map(String::from),
+                    picture: None,
+                    cover: None,
+                    image: None,
+                    artist_name,
+                    album_id: album.and_then(|a| a.get("id").and_then(|v| v.as_u64())),
+                    album_title: album.and_then(|a| a.get("title").and_then(|v| v.as_str())).map(String::from),
+                    album_cover: album.and_then(|a| a.get("cover").and_then(|v| v.as_str())).map(String::from),
+                    duration: val.get("duration").and_then(|v| v.as_u64()).map(|d| d as u32),
+                    number_of_tracks: None,
+                })
+            },
+            "PLAYLISTS" => {
+                Some(DirectHitItem {
+                    hit_type,
+                    id: None,
+                    uuid: val.get("uuid").and_then(|v| v.as_str()).map(String::from),
+                    name: None,
+                    title: val.get("title").and_then(|v| v.as_str()).map(String::from),
+                    picture: None,
+                    cover: None,
+                    image: val.get("squareImage").and_then(|v| v.as_str())
+                        .or_else(|| val.get("image").and_then(|v| v.as_str()))
+                        .map(String::from),
+                    artist_name: None,
+                    album_id: None,
+                    album_title: None,
+                    album_cover: None,
+                    duration: None,
+                    number_of_tracks: val.get("numberOfTracks").and_then(|v| v.as_u64()).map(|n| n as u32),
+                })
+            },
+            _ => None,
+        }
+    }
+
+    /// Parse an array of typed value items into Vec<DirectHitItem>, preserving order.
+    pub fn parse_array(arr: &[serde_json::Value]) -> Vec<Self> {
+        arr.iter().filter_map(Self::from_typed_value).collect()
+    }
 }
 
 /// A text suggestion item (history or autocomplete).
@@ -1537,29 +1643,28 @@ impl TidalClient {
 
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]
-        struct TH {
-            #[serde(rename = "type")]
-            hit_type: Option<String>,
-        }
-
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
         struct SR {
             #[serde(default)] artists: Option<Sec<TidalArtist>>,
             #[serde(default)] albums: Option<Sec<TidalAlbumDetail>>,
             #[serde(default)] tracks: Option<Sec<TidalTrack>>,
             #[serde(default)] playlists: Option<Sec<TidalPlaylistRaw>>,
-            #[serde(default)] top_hit: Option<TH>,
         }
 
         let data: SR = serde_json::from_str(body)
             .map_err(|e| format!("Failed to parse search ({}): {}", tag, e))?;
 
-        eprintln!("DEBUG search [{}]: t={} al={} ar={} pl={} for '{}'", tag,
+        // Parse topHits from the raw JSON (v2 returns an array of typed entities)
+        let top_hits = serde_json::from_str::<serde_json::Value>(body)
+            .ok()
+            .and_then(|json| json.get("topHits").and_then(|v| v.as_array()).map(|arr| DirectHitItem::parse_array(arr)))
+            .unwrap_or_default();
+
+        eprintln!("DEBUG search [{}]: t={} al={} ar={} pl={} th={} for '{}'", tag,
             data.tracks.as_ref().map(|s| s.items.len()).unwrap_or(0),
             data.albums.as_ref().map(|s| s.items.len()).unwrap_or(0),
             data.artists.as_ref().map(|s| s.items.len()).unwrap_or(0),
             data.playlists.as_ref().map(|s| s.items.len()).unwrap_or(0),
+            top_hits.len(),
             query);
 
         let mut tracks = data.tracks.map(|s| s.items).unwrap_or_default();
@@ -1575,7 +1680,8 @@ impl TidalClient {
             playlists: data.playlists
                 .map(|s| s.items.into_iter().map(|p| p.into()).collect())
                 .unwrap_or_default(),
-            top_hit_type: data.top_hit.and_then(|h| h.hit_type),
+            top_hit_type: None,
+            top_hits,
         })
     }
 
@@ -1656,107 +1762,11 @@ impl TidalClient {
 
         text_suggestions.truncate(limit as usize);
 
-        // Extract directHits in exact API order
-        let mut direct_hits = Vec::new();
-        if let Some(arr) = json.get("directHits").and_then(|v| v.as_array()) {
-            for item in arr {
-                let hit_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let val = match item.get("value") {
-                    Some(v) => v,
-                    None => continue,
-                };
-
-                let hit = match hit_type.as_str() {
-                    "ARTISTS" => DirectHitItem {
-                        hit_type,
-                        id: val.get("id").and_then(|v| v.as_u64()),
-                        uuid: None,
-                        name: val.get("name").and_then(|v| v.as_str()).map(String::from),
-                        title: None,
-                        picture: val.get("picture").and_then(|v| v.as_str()).map(String::from),
-                        cover: None,
-                        image: None,
-                        artist_name: None,
-                        album_id: None,
-                        album_title: None,
-                        album_cover: None,
-                        duration: None,
-                        number_of_tracks: None,
-                    },
-                    "ALBUMS" => {
-                        let artist_name = val.get("artists")
-                            .and_then(|a| a.as_array())
-                            .and_then(|arr| arr.first())
-                            .and_then(|a| a.get("name").and_then(|v| v.as_str()))
-                            .or_else(|| val.get("artist").and_then(|a| a.get("name").and_then(|v| v.as_str())))
-                            .map(String::from);
-                        DirectHitItem {
-                            hit_type,
-                            id: val.get("id").and_then(|v| v.as_u64()),
-                            uuid: None,
-                            name: None,
-                            title: val.get("title").and_then(|v| v.as_str()).map(String::from),
-                            picture: None,
-                            cover: val.get("cover").and_then(|v| v.as_str()).map(String::from),
-                            image: None,
-                            artist_name,
-                            album_id: None,
-                            album_title: None,
-                            album_cover: None,
-                            duration: val.get("duration").and_then(|v| v.as_u64()).map(|d| d as u32),
-                            number_of_tracks: val.get("numberOfTracks").and_then(|v| v.as_u64()).map(|n| n as u32),
-                        }
-                    },
-                    "TRACKS" => {
-                        let artist_name = val.get("artists")
-                            .and_then(|a| a.as_array())
-                            .and_then(|arr| arr.first())
-                            .and_then(|a| a.get("name").and_then(|v| v.as_str()))
-                            .or_else(|| val.get("artist").and_then(|a| a.get("name").and_then(|v| v.as_str())))
-                            .map(String::from);
-                        let album = val.get("album");
-                        DirectHitItem {
-                            hit_type,
-                            id: val.get("id").and_then(|v| v.as_u64()),
-                            uuid: None,
-                            name: None,
-                            title: val.get("title").and_then(|v| v.as_str()).map(String::from),
-                            picture: None,
-                            cover: None,
-                            image: None,
-                            artist_name,
-                            album_id: album.and_then(|a| a.get("id").and_then(|v| v.as_u64())),
-                            album_title: album.and_then(|a| a.get("title").and_then(|v| v.as_str())).map(String::from),
-                            album_cover: album.and_then(|a| a.get("cover").and_then(|v| v.as_str())).map(String::from),
-                            duration: val.get("duration").and_then(|v| v.as_u64()).map(|d| d as u32),
-                            number_of_tracks: None,
-                        }
-                    },
-                    "PLAYLISTS" => {
-                        DirectHitItem {
-                            hit_type,
-                            id: None,
-                            uuid: val.get("uuid").and_then(|v| v.as_str()).map(String::from),
-                            name: None,
-                            title: val.get("title").and_then(|v| v.as_str()).map(String::from),
-                            picture: None,
-                            cover: None,
-                            image: val.get("squareImage").and_then(|v| v.as_str())
-                                .or_else(|| val.get("image").and_then(|v| v.as_str()))
-                                .map(String::from),
-                            artist_name: None,
-                            album_id: None,
-                            album_title: None,
-                            album_cover: None,
-                            duration: None,
-                            number_of_tracks: val.get("numberOfTracks").and_then(|v| v.as_u64()).map(|n| n as u32),
-                        }
-                    },
-                    _ => continue,
-                };
-                direct_hits.push(hit);
-            }
-        }
+        // Extract directHits in exact API order using the shared helper
+        let direct_hits = json.get("directHits")
+            .and_then(|v| v.as_array())
+            .map(|arr| DirectHitItem::parse_array(arr))
+            .unwrap_or_default();
 
         Some(SuggestionsResponse { text_suggestions, direct_hits })
     }
