@@ -91,7 +91,10 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
         if (cancelledRef.current) return;
 
         startTransition(() => {
-          setAllTracks((prev) => [...prev, ...page.items]);
+          setAllTracks((prev) => {
+            const seen = new Set(prev.map((t) => t.id));
+            return [...prev, ...page.items.filter((t) => !seen.has(t.id))];
+          });
           setTotalTracks(page.totalNumberOfItems);
         });
         offsetRef.current += page.items.length;
@@ -114,7 +117,10 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
       const userId = authTokens?.user_id;
       if (userId == null) return;
       const page = await getFavoriteTracks(userId, offsetRef.current, PAGE_SIZE);
-      setAllTracks((prev) => [...prev, ...page.items]);
+      setAllTracks((prev) => {
+        const seen = new Set(prev.map((t) => t.id));
+        return [...prev, ...page.items.filter((t) => !seen.has(t.id))];
+      });
       setTotalTracks(page.totalNumberOfItems);
       offsetRef.current += page.items.length;
       hasMoreRef.current = offsetRef.current < page.totalNumberOfItems;

@@ -96,7 +96,10 @@ export default function PlaylistView({
         if (cancelledRef.current) return;
 
         startTransition(() => {
-          setAllTracks((prev) => [...prev, ...page.items]);
+          setAllTracks((prev) => {
+            const seen = new Set(prev.map((t) => t.id));
+            return [...prev, ...page.items.filter((t) => !seen.has(t.id))];
+          });
           setTotalTracks(page.totalNumberOfItems);
         });
         offsetRef.current += page.items.length;
@@ -116,7 +119,10 @@ export default function PlaylistView({
     setLoadingMore(true);
     try {
       const page = await getPlaylistTracksPage(playlistId, offsetRef.current, PAGE_SIZE);
-      setAllTracks((prev) => [...prev, ...page.items]);
+      setAllTracks((prev) => {
+        const seen = new Set(prev.map((t) => t.id));
+        return [...prev, ...page.items.filter((t) => !seen.has(t.id))];
+      });
       setTotalTracks(page.totalNumberOfItems);
       offsetRef.current += page.items.length;
       hasMoreRef.current = offsetRef.current < page.totalNumberOfItems;
