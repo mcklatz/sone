@@ -6,6 +6,18 @@ use crate::SoneError;
 use crate::cache::{CacheResult, CacheTier};
 
 #[tauri::command]
+pub fn update_tray_tooltip(app: tauri::AppHandle, text: String) -> Result<String, SoneError> {
+    match app.tray_by_id("main-tray") {
+        Some(tray) => {
+            let r1 = tray.set_tooltip(Some(&text));
+            let r2 = tray.set_title(Some(&text));
+            Ok(format!("tooltip={r1:?}, title={r2:?}"))
+        }
+        None => Ok("tray not found".into()),
+    }
+}
+
+#[tauri::command]
 pub async fn get_image_bytes(state: State<'_, AppState>, url: String) -> Result<Vec<u8>, SoneError> {
     log::debug!("[get_image_bytes]: url={}", url);
 

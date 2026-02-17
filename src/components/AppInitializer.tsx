@@ -351,6 +351,46 @@ export function AppInitializer() {
   }, [playNext]);
 
   // ================================================================
+  //  TRAY & GLOBAL MEDIA KEY EVENTS
+  //  Backend emits these from tray menu clicks and global shortcut handler.
+  // ================================================================
+  useEffect(() => {
+    const unlistenToggle = listen("tray:toggle-play", () => {
+      store.get(isPlayingAtom) ? pauseTrack() : resumeTrack();
+    });
+    const unlistenNext = listen("tray:next-track", () => {
+      playNext();
+    });
+    const unlistenPrev = listen("tray:prev-track", () => {
+      playPrevious();
+    });
+    return () => {
+      unlistenToggle.then((fn) => fn());
+      unlistenNext.then((fn) => fn());
+      unlistenPrev.then((fn) => fn());
+    };
+  }, [store, playNext, playPrevious, pauseTrack, resumeTrack]);
+
+  // ================================================================
+  //  TRAY TOOLTIP — update with current track info
+  // ================================================================
+  useEffect(() => {
+    const updateTooltip = () => {
+      const track = store.get(currentTrackAtom);
+      const text = track
+        ? `${track.title} — ${track.artist?.name || "Unknown"}`
+        : "Sone";
+      invoke("update_tray_tooltip", { text }).then((r) => console.log("[tray tooltip]", text, "→", r)).catch((e) => console.error("[tray tooltip] invoke failed:", e));
+    };
+
+    // Set tooltip for already-restored track
+    updateTooltip();
+
+    const unsub = store.sub(currentTrackAtom, updateTooltip);
+    return unsub;
+  }, [store]);
+
+  // ================================================================
   //  KEYBOARD SHORTCUTS
   //  All action callbacks are stable (from usePlaybackActions).
   //  Volume / isPlaying are read from store at call-time.
@@ -453,6 +493,37 @@ export function AppInitializer() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [store, playNext, playPrevious, pauseTrack, resumeTrack, setVolume, setDrawerOpen, favoriteTrackIds, addFavoriteTrack, removeFavoriteTrack]);
+
+  // ================================================================
+  //  BLOCK MIDDLE-CLICK PASTE (Linux/X11 primary selection)
+  //  WebKitGTK processes the paste before mousedown reaches JS,
+  //  so we also intercept the paste event triggered by middle-click.
+  // ================================================================
+  useEffect(() => {
+    let middleDown = false;
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button === 1) {
+        middleDown = true;
+        e.preventDefault();
+      }
+    };
+    const onPaste = (e: ClipboardEvent) => {
+      if (middleDown) {
+        e.preventDefault();
+      }
+    };
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.button === 1) middleDown = false;
+    };
+    window.addEventListener("mousedown", onMouseDown, true);
+    window.addEventListener("paste", onPaste, true);
+    window.addEventListener("mouseup", onMouseUp, true);
+    return () => {
+      window.removeEventListener("mousedown", onMouseDown, true);
+      window.removeEventListener("paste", onPaste, true);
+      window.removeEventListener("mouseup", onMouseUp, true);
+    };
+  }, []);
 
   // ================================================================
   //  POPSTATE (browser back/forward navigation)

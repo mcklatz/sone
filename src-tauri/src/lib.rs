@@ -13,9 +13,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Shortcut, ShortcutState};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tidal_api::{AuthTokens, TidalClient};
 
@@ -151,9 +152,16 @@ pub fn run() {
 
             // System tray icon
             let show_item = MenuItemBuilder::with_id("show", "Show").build(app)?;
+            let play_pause = MenuItemBuilder::with_id("play-pause", "Play / Pause").build(app)?;
+            let next_track = MenuItemBuilder::with_id("next-track", "Next Track").build(app)?;
+            let prev_track = MenuItemBuilder::with_id("prev-track", "Previous Track").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
             let menu = MenuBuilder::new(app)
                 .item(&show_item)
+                .separator()
+                .item(&play_pause)
+                .item(&next_track)
+                .item(&prev_track)
                 .separator()
                 .item(&quit_item)
                 .build()?;
@@ -163,7 +171,7 @@ pub fn run() {
                 let rgba = image.to_rgba8();
                 let (width, height) = rgba.dimensions();
                 let icon = tauri::image::Image::new(rgba.as_raw(), width, height);
-                TrayIconBuilder::new()
+                TrayIconBuilder::with_id("main-tray")
                     .icon(icon)
                     .menu(&menu)
                     .tooltip("Sone")
@@ -190,6 +198,9 @@ pub fn run() {
                                 let _ = window.set_focus();
                             }
                         }
+                        "play-pause" => { app.emit("tray:toggle-play", ()).ok(); }
+                        "next-track" => { app.emit("tray:next-track", ()).ok(); }
+                        "prev-track" => { app.emit("tray:prev-track", ()).ok(); }
                         "quit" => {
                             app.exit(0);
                         }
@@ -197,13 +208,38 @@ pub fn run() {
                     })
                     .build(app)?
             } else {
-                TrayIconBuilder::new()
+                TrayIconBuilder::with_id("main-tray")
                     .menu(&menu)
                     .tooltip("Sone")
                     .build(app)?
             };
             // Keep tray icon alive
             app.manage(tray_icon);
+
+            // Global media key shortcuts
+            app.handle().plugin(
+                tauri_plugin_global_shortcut::Builder::new()
+                    .with_handler(move |app, shortcut, event| {
+                        if event.state() != ShortcutState::Pressed { return; }
+                        match shortcut.key {
+                            Code::MediaPlayPause => { app.emit("tray:toggle-play", ()).ok(); }
+                            Code::MediaTrackNext => { app.emit("tray:next-track", ()).ok(); }
+                            Code::MediaTrackPrevious => { app.emit("tray:prev-track", ()).ok(); }
+                            _ => {}
+                        };
+                    })
+                    .build()
+            )?;
+            let shortcuts = [
+                ("MediaPlayPause", Code::MediaPlayPause),
+                ("MediaTrackNext", Code::MediaTrackNext),
+                ("MediaTrackPrevious", Code::MediaTrackPrevious),
+            ];
+            for (name, code) in shortcuts {
+                if let Err(e) = app.global_shortcut().register(Shortcut::new(None, code)) {
+                    log::warn!("Failed to register global {name} shortcut: {e}");
+                }
+            }
 
             Ok(())
         })
@@ -292,6 +328,7 @@ pub fn run() {
             commands::utility::set_minimize_to_tray,
             commands::utility::get_volume_normalization,
             commands::utility::set_volume_normalization,
+            commands::utility::update_tray_tooltip,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
