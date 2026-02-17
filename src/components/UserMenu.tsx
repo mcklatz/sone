@@ -1,8 +1,10 @@
-import { LogOut, Palette, RefreshCw, User, Keyboard, X, MonitorDown, Volume2 } from "lucide-react";
+import { LogOut, Palette, RefreshCw, User, Keyboard, X, MonitorDown, Volume2, Infinity as InfinityIcon } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useAtom } from "jotai";
 import { useAuth } from "../hooks/useAuth";
 import { clearAllCache } from "../api/tidal";
+import { autoplayAtom } from "../atoms/playback";
 import ThemeEditor from "./ThemeEditor";
 
 const SHORTCUTS = [
@@ -26,6 +28,7 @@ export default function UserMenu() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [minimizeToTray, setMinimizeToTray] = useState(false);
   const [volumeNormalization, setVolumeNormalization] = useState(false);
+  const [autoplay, setAutoplay] = useAtom(autoplayAtom);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Load preferences
@@ -135,6 +138,26 @@ export default function UserMenu() {
               <div
                 className={`w-3.5 h-3.5 rounded-full bg-white mt-[2px] transition-transform ${
                   volumeNormalization ? "translate-x-[16px]" : "translate-x-[2px]"
+                }`}
+              />
+            </div>
+          </button>
+
+          {/* Autoplay */}
+          <button
+            onClick={() => setAutoplay(!autoplay)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-th-text-secondary hover:text-white hover:bg-th-border-subtle transition-colors"
+          >
+            <InfinityIcon size={16} />
+            <span className="flex-1 text-left">Autoplay</span>
+            <div
+              className={`w-8 h-[18px] rounded-full transition-colors ${
+                autoplay ? "bg-th-accent" : "bg-th-border-subtle"
+              }`}
+            >
+              <div
+                className={`w-3.5 h-3.5 rounded-full bg-white mt-[2px] transition-transform ${
+                  autoplay ? "translate-x-[16px]" : "translate-x-[2px]"
                 }`}
               />
             </div>

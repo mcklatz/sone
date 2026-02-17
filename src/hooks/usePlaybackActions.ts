@@ -18,7 +18,9 @@ import {
   queueAtom,
   historyAtom,
   streamInfoAtom,
+  autoplayAtom,
 } from "../atoms/playback";
+import { getTrackRadio } from "../api/tidal";
 import type { Track, StreamInfo } from "../types";
 
 export function usePlaybackActions() {
@@ -139,6 +141,27 @@ export function usePlaybackActions() {
       const [nextTrack, ...rest] = queue;
       store.set(queueAtom, rest);
       await playTrack(nextTrack);
+    } else if (store.get(autoplayAtom)) {
+      const current = store.get(currentTrackAtom);
+      if (current) {
+        try {
+          const historyIds = new Set(
+            store.get(historyAtom).map((t) => t.id)
+          );
+          historyIds.add(current.id);
+          const radio = await getTrackRadio(current.id, 30);
+          const fresh = radio.filter((t) => !historyIds.has(t.id));
+          if (fresh.length > 0) {
+            const [next, ...rest] = fresh;
+            store.set(queueAtom, rest);
+            await playTrack(next);
+            return;
+          }
+        } catch {
+          /* fall through to stop */
+        }
+      }
+      store.set(isPlayingAtom, false);
     } else {
       store.set(isPlayingAtom, false);
     }

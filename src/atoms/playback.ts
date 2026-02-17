@@ -9,3 +9,4 @@ export const queueAtom = atom<Track[]>([]);
 export const historyAtom = atom<Track[]>([]);
 export const streamInfoAtom = atom<StreamInfo | null>(null);
 export const preMuteVolumeAtom = atom<number>(0);
+export const autoplayAtom = atomWithStorage("sone.autoplay.v1", false);

@@ -11,16 +11,18 @@ import {
   Heart,
   ListMusic,
   Mic2,
+  Infinity as InfinityIcon,
 } from "lucide-react";
 import { getTidalImageUrl } from "../types";
 import TidalImage from "./TidalImage";
 import { useState, useEffect, useRef, useCallback, memo } from "react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useAtom } from "jotai";
 import {
   currentTrackAtom,
   isPlayingAtom,
   volumeAtom,
   streamInfoAtom,
+  autoplayAtom,
 } from "../atoms/playback";
 import { favoriteTrackIdsAtom } from "../atoms/favorites";
 import { usePlaybackActions } from "../hooks/usePlaybackActions";
@@ -258,6 +260,27 @@ const ProgressScrubber = memo(function ProgressScrubber() {
 
 // ─── TransportControls ─────────────────────────────────────────────────────
 
+const AutoplayButton = memo(function AutoplayButton() {
+  const [autoplay, setAutoplay] = useAtom(autoplayAtom);
+
+  return (
+    <button
+      onClick={() => setAutoplay(!autoplay)}
+      className={`w-8 h-8 flex items-center justify-center rounded-full transition-[color,background-color,transform] duration-200 active:scale-90 relative ${
+        autoplay
+          ? "text-th-accent"
+          : "text-th-text-secondary hover:text-white hover:bg-th-border-subtle"
+      }`}
+      title="Autoplay"
+    >
+      <InfinityIcon size={17} strokeWidth={2.5} />
+      {autoplay && (
+        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-th-accent" />
+      )}
+    </button>
+  );
+});
+
 const TransportControls = memo(function TransportControls() {
   const isPlaying = useAtomValue(isPlayingAtom);
   const { pauseTrack, resumeTrack, playNext, playPrevious } = usePlaybackActions();
@@ -322,6 +345,7 @@ const TransportControls = memo(function TransportControls() {
             <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-th-accent" />
           )}
         </button>
+        <AutoplayButton />
       </div>
 
       {/* Progress bar */}
