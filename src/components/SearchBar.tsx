@@ -4,14 +4,16 @@ import {
   Loader2,
   MoreHorizontal,
   Clock,
+  Play,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { usePlaybackActions } from "../hooks/usePlaybackActions";
 import { useNavigation } from "../hooks/useNavigation";
 import { getSuggestions } from "../api/tidal";
-import { getTidalImageUrl, type DirectHitItem, type SuggestionTextItem, type Track } from "../types";
+import { getTidalImageUrl, type DirectHitItem, type SuggestionTextItem, type Track, type MediaItemType } from "../types";
 import TidalImage from "./TidalImage";
 import TrackContextMenu from "./TrackContextMenu";
+import MediaContextMenu from "./MediaContextMenu";
 
 const HISTORY_KEY = "sone.search-history";
 const MAX_HISTORY = 10;
@@ -58,6 +60,12 @@ export default function SearchBar() {
   const [ctxTrackIndex, setCtxTrackIndex] = useState(0);
   const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | undefined>(undefined);
   const dotsRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+
+  // Media context menu state (albums, playlists, artists)
+  const [mediaCtx, setMediaCtx] = useState<{
+    item: MediaItemType;
+    position: { x: number; y: number };
+  } | null>(null);
 
   // Sync search query with current view if it's a search view
   useEffect(() => {
@@ -317,8 +325,9 @@ export default function SearchBar() {
                   {directHits.map((hit, idx) => {
                     if (hit.hitType === "ARTISTS") {
                       return (
-                        <button
+                        <div
                           key={`dh-${idx}`}
+                          className="flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left group/item cursor-pointer"
                           onClick={() => {
                             setSearchOpen(false);
                             if (hit.id) navigateToArtist(hit.id, {
@@ -326,7 +335,15 @@ export default function SearchBar() {
                               picture: hit.picture,
                             });
                           }}
-                          className="w-full flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left"
+                          onContextMenu={(e) => {
+                            if (!hit.id) return;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setMediaCtx({
+                              item: { type: "artist", id: hit.id, name: hit.name || "", picture: hit.picture },
+                              position: { x: e.clientX, y: e.clientY },
+                            });
+                          }}
                         >
                           <div className="w-12 h-12 rounded-full bg-th-surface-hover overflow-hidden shrink-0">
                             {hit.picture ? (
@@ -349,14 +366,28 @@ export default function SearchBar() {
                             </p>
                             <p className="text-[11px] text-th-text-faint">Artist</p>
                           </div>
-                          <MoreHorizontal size={16} className="text-th-text-faint shrink-0" />
-                        </button>
+                          <button
+                            className="p-1 rounded-full text-th-text-faint hover:text-white opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0"
+                            title="More options"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!hit.id) return;
+                              setMediaCtx({
+                                item: { type: "artist", id: hit.id, name: hit.name || "", picture: hit.picture },
+                                position: { x: e.clientX, y: e.clientY },
+                              });
+                            }}
+                          >
+                            <MoreHorizontal size={16} />
+                          </button>
+                        </div>
                       );
                     }
                     if (hit.hitType === "ALBUMS") {
                       return (
-                        <button
+                        <div
                           key={`dh-${idx}`}
+                          className="flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left group/item cursor-pointer"
                           onClick={() => {
                             setSearchOpen(false);
                             if (hit.id) navigateToAlbum(hit.id, {
@@ -365,7 +396,15 @@ export default function SearchBar() {
                               artistName: hit.artistName,
                             });
                           }}
-                          className="w-full flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left"
+                          onContextMenu={(e) => {
+                            if (!hit.id) return;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setMediaCtx({
+                              item: { type: "album", id: hit.id, title: hit.title || "", cover: hit.cover, artistName: hit.artistName },
+                              position: { x: e.clientX, y: e.clientY },
+                            });
+                          }}
                         >
                           <div className="w-12 h-12 rounded bg-th-surface-hover overflow-hidden shrink-0">
                             <TidalImage
@@ -382,8 +421,21 @@ export default function SearchBar() {
                               Album &middot; {hit.artistName || "Unknown"}
                             </p>
                           </div>
-                          <MoreHorizontal size={16} className="text-th-text-faint shrink-0" />
-                        </button>
+                          <button
+                            className="p-1 rounded-full text-th-text-faint hover:text-white opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0"
+                            title="More options"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!hit.id) return;
+                              setMediaCtx({
+                                item: { type: "album", id: hit.id, title: hit.title || "", cover: hit.cover, artistName: hit.artistName },
+                                position: { x: e.clientX, y: e.clientY },
+                              });
+                            }}
+                          >
+                            <MoreHorizontal size={16} />
+                          </button>
+                        </div>
                       );
                     }
                     if (hit.hitType === "TRACKS") {
@@ -415,12 +467,15 @@ export default function SearchBar() {
                               playTrack(trackObj);
                             }}
                           >
-                            <div className="w-12 h-12 rounded bg-th-surface-hover overflow-hidden shrink-0">
+                            <div className="w-12 h-12 rounded bg-th-surface-hover overflow-hidden shrink-0 relative">
                               <TidalImage
                                 src={getTidalImageUrl(hit.albumCover, 80)}
                                 alt={hit.title || ""}
                                 className="w-full h-full"
                               />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/track:opacity-100 transition-opacity">
+                                <Play size={16} fill="white" className="text-white ml-0.5" />
+                              </div>
                             </div>
                             <div className="flex-1 min-w-0 text-left">
                               <p className="text-[14px] text-white truncate">
@@ -461,8 +516,9 @@ export default function SearchBar() {
                     }
                     if (hit.hitType === "PLAYLISTS") {
                       return (
-                        <button
+                        <div
                           key={`dh-${idx}`}
+                          className="flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left group/item cursor-pointer"
                           onClick={() => {
                             setSearchOpen(false);
                             if (hit.uuid) navigateToPlaylist(hit.uuid, {
@@ -470,7 +526,15 @@ export default function SearchBar() {
                               image: hit.image,
                             });
                           }}
-                          className="w-full flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left"
+                          onContextMenu={(e) => {
+                            if (!hit.uuid) return;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setMediaCtx({
+                              item: { type: "playlist", uuid: hit.uuid, title: hit.title || "", image: hit.image },
+                              position: { x: e.clientX, y: e.clientY },
+                            });
+                          }}
                         >
                           <div className="w-12 h-12 rounded bg-th-surface-hover overflow-hidden shrink-0">
                             <TidalImage
@@ -487,8 +551,21 @@ export default function SearchBar() {
                               Playlist{hit.numberOfTracks ? ` · ${hit.numberOfTracks} tracks` : ""}
                             </p>
                           </div>
-                          <MoreHorizontal size={16} className="text-th-text-faint shrink-0" />
-                        </button>
+                          <button
+                            className="p-1 rounded-full text-th-text-faint hover:text-white opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0"
+                            title="More options"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!hit.uuid) return;
+                              setMediaCtx({
+                                item: { type: "playlist", uuid: hit.uuid, title: hit.title || "", image: hit.image },
+                                position: { x: e.clientX, y: e.clientY },
+                              });
+                            }}
+                          >
+                            <MoreHorizontal size={16} />
+                          </button>
+                        </div>
                       );
                     }
                     return null;
@@ -510,6 +587,15 @@ export default function SearchBar() {
             </>
           )}
         </div>
+      )}
+
+      {/* Media context menu (albums, playlists, artists) */}
+      {mediaCtx && (
+        <MediaContextMenu
+          item={mediaCtx.item}
+          cursorPosition={mediaCtx.position}
+          onClose={() => setMediaCtx(null)}
+        />
       )}
     </div>
   );
