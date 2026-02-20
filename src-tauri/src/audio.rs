@@ -33,9 +33,17 @@ impl AudioPlayer {
         let (cmd_tx, cmd_rx) = mpsc::channel::<AudioCommand>();
 
         std::thread::spawn(move || {
-            // Ensure GStreamer can find system plugins (needed for AppImage where
-            // the bundled LD_LIBRARY_PATH may shadow the system plugin directory).
-            if std::env::var("GST_PLUGIN_PATH").is_err() {
+            // Ensure GStreamer can find plugins.
+            // In AppImage: the AppRun hook sets GST_PLUGIN_PATH_1_0 pointing to
+            // bundled plugins. Bridge it to the unsuffixed var for compatibility.
+            // Outside AppImage: fall back to common system plugin directories.
+            if std::env::var("GST_PLUGIN_PATH_1_0").is_ok()
+                || std::env::var("APPDIR").is_ok()
+            {
+                if let Ok(path) = std::env::var("GST_PLUGIN_PATH_1_0") {
+                    std::env::set_var("GST_PLUGIN_PATH", &path);
+                }
+            } else if std::env::var("GST_PLUGIN_PATH").is_err() {
                 for dir in [
                     "/usr/lib/x86_64-linux-gnu/gstreamer-1.0",
                     "/usr/lib64/gstreamer-1.0",
