@@ -83,6 +83,20 @@ pub fn get_volume_normalization(state: State<'_, AppState>) -> bool {
 #[tauri::command]
 pub fn set_volume_normalization(state: State<'_, AppState>, enabled: bool) -> Result<(), SoneError> {
     state.volume_normalization.store(enabled, Ordering::Relaxed);
+
+    // Immediately apply/reset normalization on the current track
+    let norm_gain = if enabled {
+        let rg = f64::from_bits(state.last_album_replay_gain.load(Ordering::Relaxed));
+        if rg.is_finite() {
+            10.0_f64.powf(rg / 20.0).min(1.0)
+        } else {
+            1.0
+        }
+    } else {
+        1.0
+    };
+    state.audio_player.set_normalization_gain(norm_gain).map_err(SoneError::Audio)?;
+
     let mut settings = state.load_settings().unwrap_or(crate::Settings {
         auth_tokens: None,
         volume: 1.0,

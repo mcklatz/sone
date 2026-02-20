@@ -53,6 +53,12 @@ pub async fn play_tidal_track(state: State<'_, AppState>, track_id: u64) -> Resu
 
     state.audio_player.play_url(&uri).map_err(SoneError::Audio)?;
 
+    // Store replay gain for live toggle
+    state.last_album_replay_gain.store(
+        stream_info.album_replay_gain.unwrap_or(f64::NAN).to_bits(),
+        Ordering::Relaxed,
+    );
+
     // Apply normalization gain if enabled
     let norm_gain = if state.volume_normalization.load(Ordering::Relaxed) {
         if let Some(rg) = stream_info.album_replay_gain {

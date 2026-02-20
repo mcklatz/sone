@@ -15,7 +15,7 @@ use crypto::Crypto;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tauri::{Emitter, Manager};
@@ -50,6 +50,8 @@ pub struct AppState {
     pub crypto: Arc<Crypto>,
     pub minimize_to_tray: AtomicBool,
     pub volume_normalization: AtomicBool,
+    /// Current track's album replay gain (dB) stored as f64 bits. NAN = no data.
+    pub last_album_replay_gain: AtomicU64,
     #[cfg(target_os = "linux")]
     pub mpris: mpris::MprisHandle,
 }
@@ -121,6 +123,7 @@ impl AppState {
             crypto,
             minimize_to_tray: AtomicBool::new(minimize_to_tray),
             volume_normalization: AtomicBool::new(volume_normalization),
+            last_album_replay_gain: AtomicU64::new(f64::NAN.to_bits()),
             #[cfg(target_os = "linux")]
             mpris: mpris::MprisHandle::new(app_handle),
         }
