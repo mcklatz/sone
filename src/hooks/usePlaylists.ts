@@ -3,7 +3,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { invoke } from "@tauri-apps/api/core";
 import { userPlaylistsAtom, favoritePlaylistsAtom, deletedPlaylistIdsAtom } from "../atoms/playlists";
 import { authTokensAtom } from "../atoms/auth";
-import { invalidateCache } from "../api/tidal";
+import { invalidateCache, getUserPlaylists } from "../api/tidal";
 import type { Playlist } from "../types";
 
 export function usePlaylists() {
@@ -23,6 +23,7 @@ export function usePlaylists() {
           description,
         });
         setUserPlaylists((prev) => [playlist, ...prev]);
+        invalidateCache("user-playlists");
         return playlist;
       } catch (error: any) {
         console.error("Failed to create playlist:", error);
@@ -32,6 +33,29 @@ export function usePlaylists() {
     [authTokens?.user_id, setUserPlaylists]
   );
 
+  // Background re-fetch user playlists to pick up server-side changes (image, exact count)
+  const refreshUserPlaylists = useCallback(() => {
+    if (!authTokens?.user_id) return;
+    const userId = authTokens.user_id;
+    getUserPlaylists(userId, 0, 50).then((res) => {
+      if (res.items?.length) setUserPlaylists(res.items);
+    }).catch(() => {});
+  }, [authTokens?.user_id, setUserPlaylists]);
+
+  const updatePlaylistTrackCount = useCallback(
+    (playlistId: string, delta: number) => {
+      setUserPlaylists((prev) =>
+        prev.map((p) =>
+          p.uuid === playlistId
+            ? { ...p, numberOfTracks: Math.max(0, (p.numberOfTracks ?? 0) + delta) }
+            : p
+        )
+      );
+      invalidateCache("user-playlists");
+    },
+    [setUserPlaylists]
+  );
+
   const addTrackToPlaylist = useCallback(
     async (playlistId: string, trackId: number): Promise<void> => {
       try {
@@ -39,14 +63,16 @@ export function usePlaylists() {
           playlistId,
           trackId: trackId,
         });
+        updatePlaylistTrackCount(playlistId, 1);
         invalidateCache(`playlist:${playlistId}`);
         invalidateCache(`playlist-page:${playlistId}`);
+        refreshUserPlaylists();
       } catch (error: any) {
         console.error("Failed to add track to playlist:", error);
         throw error;
       }
     },
-    []
+    [updatePlaylistTrackCount, refreshUserPlaylists]
   );
 
   const removeTrackFromPlaylist = useCallback(
@@ -56,14 +82,16 @@ export function usePlaylists() {
           playlistId,
           index,
         });
+        updatePlaylistTrackCount(playlistId, -1);
         invalidateCache(`playlist:${playlistId}`);
         invalidateCache(`playlist-page:${playlistId}`);
+        refreshUserPlaylists();
       } catch (error: any) {
         console.error("Failed to remove track from playlist:", error);
         throw error;
       }
     },
-    []
+    [updatePlaylistTrackCount, refreshUserPlaylists]
   );
 
   const deletePlaylist = useCallback(
@@ -96,14 +124,16 @@ export function usePlaylists() {
           playlistId,
           trackIds,
         });
+        updatePlaylistTrackCount(playlistId, trackIds.length);
         invalidateCache(`playlist:${playlistId}`);
         invalidateCache(`playlist-page:${playlistId}`);
+        refreshUserPlaylists();
       } catch (error: any) {
         console.error("Failed to add tracks to playlist:", error);
         throw error;
       }
     },
-    []
+    [updatePlaylistTrackCount, refreshUserPlaylists]
   );
 
   return {

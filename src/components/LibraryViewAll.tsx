@@ -4,7 +4,7 @@ import { useNavigation } from "../hooks/useNavigation";
 import { useMediaPlay } from "../hooks/useMediaPlay";
 import { useFavorites } from "../hooks/useFavorites";
 import { useAtomValue } from "jotai";
-import { favoritePlaylistsAtom } from "../atoms/playlists";
+import { userPlaylistsAtom, favoritePlaylistsAtom } from "../atoms/playlists";
 import {
   getUserPlaylists,
   getFavoriteAlbums,
@@ -62,6 +62,7 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
     favoriteMixIds, addFavoriteMix, removeFavoriteMix,
   } = useFavorites();
 
+  const userPlaylists = useAtomValue(userPlaylistsAtom);
   const favoritePlaylists = useAtomValue(favoritePlaylistsAtom);
 
   const [items, setItems] = useState<any[]>([]);
@@ -212,11 +213,14 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
     return () => observer.disconnect();
   }, [loadMore]);
 
-  // For playlists, also merge in boot-time favorites atom
+  // For playlists, merge: atom (optimistic) → paginated → favorites, deduped
   const displayItems = useMemo(() => {
     if (libraryType !== "playlists") return items;
     const seen = new Set<string>();
     const merged: any[] = [];
+    for (const p of userPlaylists) {
+      if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
+    }
     for (const p of items) {
       if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
     }
@@ -224,7 +228,7 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
       if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
     }
     return merged;
-  }, [items, favoritePlaylists, libraryType]);
+  }, [userPlaylists, items, favoritePlaylists, libraryType]);
 
   // ==================== Search / Filter ====================
 

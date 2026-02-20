@@ -16,7 +16,7 @@ import TidalImage from "./TidalImage";
 import MediaContextMenu from "./MediaContextMenu";
 import { useState, useCallback, useMemo } from "react";
 import { useAtomValue } from "jotai";
-import { favoritePlaylistsAtom } from "../atoms/playlists";
+import { userPlaylistsAtom, favoritePlaylistsAtom } from "../atoms/playlists";
 
 export default function Sidebar() {
   const {
@@ -35,6 +35,7 @@ export default function Sidebar() {
   const [activeFilter, setActiveFilter] = useState<"playlists" | "albums" | "artists" | "mixes">("playlists");
 
   // Playlists: paginate user playlists, merge in favorites from atom (loaded at boot)
+  const userPlaylists = useAtomValue(userPlaylistsAtom);
   const favoritePlaylists = useAtomValue(favoritePlaylistsAtom);
 
   const playlistFetch = useCallback(async (offset: number, limit: number) => {
@@ -54,10 +55,13 @@ export default function Sidebar() {
     enabled: activeFilter === "playlists" && !!authTokens?.user_id,
   });
 
-  // Merge: user playlists first, then append non-duplicate favorites
+  // Merge: atom playlists (optimistic) → paginated → favorites, deduped
   const allPlaylists = useMemo(() => {
     const seen = new Set<string>();
     const merged: Playlist[] = [];
+    for (const p of userPlaylists) {
+      if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
+    }
     for (const p of userPlaylistItems) {
       if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
     }
@@ -65,7 +69,7 @@ export default function Sidebar() {
       if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
     }
     return merged;
-  }, [userPlaylistItems, favoritePlaylists]);
+  }, [userPlaylists, userPlaylistItems, favoritePlaylists]);
 
   // Albums
   const albumFetch = useCallback(async (offset: number, limit: number) => {
