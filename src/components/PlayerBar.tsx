@@ -29,12 +29,14 @@ import { favoriteTrackIdsAtom } from "../atoms/favorites";
 import { usePlaybackActions } from "../hooks/usePlaybackActions";
 import { useFavorites } from "../hooks/useFavorites";
 import { useDrawer } from "../hooks/useDrawer";
+import { useNavigation } from "../hooks/useNavigation";
 
 // ─── TrackInfoSection ──────────────────────────────────────────────────────
 
 const TrackInfoSection = memo(function TrackInfoSection() {
   const currentTrack = useAtomValue(currentTrackAtom);
   const { toggleDrawer } = useDrawer();
+  const { navigateToAlbum, navigateToArtist } = useNavigation();
 
   if (!currentTrack) {
     return <div className="text-th-text-faint text-sm">No track playing</div>;
@@ -53,10 +55,16 @@ const TrackInfoSection = memo(function TrackInfoSection() {
         />
       </div>
       <div className="flex flex-col justify-center min-w-0 gap-0.5">
-        <span className="text-white text-[13px] font-semibold truncate hover:underline cursor-pointer leading-tight">
+        <span
+          onClick={() => currentTrack.album?.id && navigateToAlbum(currentTrack.album.id)}
+          className="text-white text-[13px] font-semibold truncate hover:underline cursor-pointer leading-tight"
+        >
           {currentTrack.title}
         </span>
-        <span className="text-th-text-secondary text-[11px] truncate hover:text-white hover:underline cursor-pointer transition-colors duration-200">
+        <span
+          onClick={() => currentTrack.artist?.id && navigateToArtist(currentTrack.artist.id)}
+          className="text-th-text-secondary text-[11px] truncate hover:text-white hover:underline cursor-pointer transition-colors duration-200"
+        >
           {currentTrack.artist?.name || "Unknown Artist"}
         </span>
       </div>
