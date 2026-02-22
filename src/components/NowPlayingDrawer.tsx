@@ -5,7 +5,7 @@ import {
   Mic2,
   Users,
   Music,
-  Loader2,
+
   Play,
   Heart,
   MoreHorizontal,
@@ -26,7 +26,7 @@ import { useDrawer } from "../hooks/useDrawer";
 import { useFavorites } from "../hooks/useFavorites";
 import { useNavigation } from "../hooks/useNavigation";
 import { useToast } from "../contexts/ToastContext";
-import { getTrackRadio, getTrackLyrics, getTrackCredits } from "../api/tidal";
+import { getTrackRadio, getTrackLyrics, getTrackCredits, getArtistBio } from "../api/tidal";
 import {
   getTidalImageUrl,
   type Track,
@@ -953,18 +953,71 @@ const LyricsTab = memo(function LyricsTab() {
 
 // ─── Credits Tab ─────────────────────────────────────────────────────────────
 
+function SkeletonBar({ className = "" }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded bg-white/[0.06] ${className}`} />
+  );
+}
+
+function SkeletonRow({ first = false }: { first?: boolean }) {
+  return (
+    <div className={`flex flex-col gap-1.5 py-4 ${first ? "" : "border-t border-white/[0.06]"}`}>
+      <SkeletonBar className="h-3 w-20" />
+      <SkeletonBar className="h-[18px] w-48" />
+    </div>
+  );
+}
+
+type BioSegment =
+  | { type: "text"; text: string }
+  | { type: "link"; artistId: number; text: string };
+
+function parseBio(raw: string): BioSegment[] {
+  const segments: BioSegment[] = [];
+  const re = /\[wimpLink\s+artistId="(\d+)"\](.*?)\[\/wimpLink\]/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = re.exec(raw)) !== null) {
+    if (match.index > last) {
+      segments.push({ type: "text", text: raw.slice(last, match.index) });
+    }
+    segments.push({
+      type: "link",
+      artistId: parseInt(match[1], 10),
+      text: match[2],
+    });
+    last = re.lastIndex;
+  }
+
+  if (last < raw.length) {
+    segments.push({ type: "text", text: raw.slice(last) });
+  }
+
+  // Strip remaining [bracket] tags and <html> tags from text segments
+  return segments.map((seg) =>
+    seg.type === "text"
+      ? { ...seg, text: seg.text.replace(/\[[^\]]*\]/g, "").replace(/<[^>]*>/g, "") }
+      : seg
+  );
+}
+
 const CreditsTab = memo(function CreditsTab() {
   const currentTrack = useAtomValue(currentTrackAtom);
+  const { navigateToArtist } = useNavigation();
+  const { setDrawerOpen } = useDrawer();
   const [credits, setCredits] = useState<Credit[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [creditsLoading, setCreditsLoading] = useState(true);
+  const [creditsError, setCreditsError] = useState<string | null>(null);
+  const [bio, setBio] = useState<string | null>(null);
+  const [bioLoading, setBioLoading] = useState(false);
 
   useEffect(() => {
     if (!currentTrack) return;
 
     let active = true;
-    setLoading(true);
-    setError(null);
+    setCreditsLoading(true);
+    setCreditsError(null);
     setCredits([]);
 
     getTrackCredits(currentTrack.id)
@@ -972,10 +1025,10 @@ const CreditsTab = memo(function CreditsTab() {
         if (active) setCredits(result);
       })
       .catch((err) => {
-        if (active) setError(String(err));
+        if (active) setCreditsError(String(err));
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setCreditsLoading(false);
       });
 
     return () => {
@@ -983,15 +1036,36 @@ const CreditsTab = memo(function CreditsTab() {
     };
   }, [currentTrack?.id]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 size={24} className="animate-spin text-th-accent" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    const artistId = currentTrack?.artist?.id;
+    if (!artistId) {
+      setBio(null);
+      return;
+    }
 
-  if (error || credits.length === 0) {
+    let active = true;
+    setBioLoading(true);
+    setBio(null);
+
+    getArtistBio(artistId)
+      .then((result) => {
+        if (active) setBio(result || null);
+      })
+      .catch(() => {
+        if (active) setBio(null);
+      })
+      .finally(() => {
+        if (active) setBioLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentTrack?.artist?.id]);
+
+  const hasNoCredits = !creditsLoading && (creditsError || credits.length === 0);
+
+  if (hasNoCredits && !bioLoading && !bio) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-th-text-disabled">
         <Users size={40} className="mb-3" />
@@ -1000,47 +1074,114 @@ const CreditsTab = memo(function CreditsTab() {
     );
   }
 
+  const releaseDate = currentTrack?.album?.releaseDate
+    ? (() => {
+        const d = new Date(currentTrack.album!.releaseDate!);
+        return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+      })()
+    : null;
+
+  const bioSegments = bio ? parseBio(bio) : null;
+  const hasBioContent = bioSegments?.some((s) => s.text.trim());
+
+  const handleArtistLink = useCallback(
+    (artistId: number, name: string) => {
+      setDrawerOpen(false);
+      navigateToArtist(artistId, { name });
+    },
+    [navigateToArtist, setDrawerOpen]
+  );
+
   return (
-    <div className="flex flex-col gap-2">
-      {/* Track metadata header */}
+    <div className="flex flex-col">
+      {/* Track metadata + credits — unified row list */}
       {currentTrack && (
-        <div className="flex flex-col gap-4 pb-4 mb-2 border-b border-th-border-subtle">
-          <MetaRow label="Title" value={currentTrack.title} />
-          <MetaRow
-            label="Artist"
+        <>
+          <CreditRow label="Title" value={currentTrack.title} first />
+          <CreditRow
+            label="Artists"
             value={currentTrack.artist?.name || "Unknown"}
           />
           {currentTrack.album?.title && (
-            <MetaRow label="Album" value={currentTrack.album.title} />
+            <CreditRow label="Album" value={currentTrack.album.title} />
           )}
-        </div>
+          {releaseDate && <CreditRow label="Released" value={releaseDate} />}
+          {currentTrack.copyright && (
+            <CreditRow label="Label" value={currentTrack.copyright} />
+          )}
+        </>
       )}
 
       {/* Credit roles */}
-      {credits.map((credit, i) => (
-        <div
-          key={`${credit.creditType}-${i}`}
-          className="flex flex-col gap-1 py-2.5 border-b border-white/[0.04] last:border-0"
-        >
-          <span className="text-[11px] font-bold text-th-text-faint uppercase tracking-widest">
-            {credit.creditType}
-          </span>
-          <span className="text-[14px] text-white/90 leading-relaxed">
-            {credit.contributors.map((c) => c.name).join(", ")}
-          </span>
+      {creditsLoading ? (
+        <>
+          {[...Array(4)].map((_, i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </>
+      ) : (
+        credits.map((credit, i) => (
+          <CreditRow
+            key={`${credit.creditType}-${i}`}
+            label={credit.creditType}
+            value={credit.contributors.map((c) => c.name).join(", ")}
+          />
+        ))
+      )}
+
+      {/* Artist bio */}
+      {bioLoading && (
+        <div className="flex flex-col gap-2.5 pt-6 mt-2">
+          <SkeletonBar className="h-5 w-12" />
+          <SkeletonBar className="h-4 w-full" />
+          <SkeletonBar className="h-4 w-full" />
+          <SkeletonBar className="h-4 w-5/6" />
+          <SkeletonBar className="h-4 w-3/4" />
         </div>
-      ))}
+      )}
+      {!bioLoading && bioSegments && hasBioContent && (
+        <div className="flex flex-col gap-2.5 pt-6 mt-2">
+          <h3 className="text-[16px] font-bold text-white">Bio</h3>
+          <p className="text-[14px] text-white/80 leading-relaxed">
+            {bioSegments.map((seg, i) =>
+              seg.type === "link" ? (
+                <button
+                  key={i}
+                  className="underline decoration-white/40 underline-offset-2 hover:decoration-white/80 transition-colors"
+                  onClick={() => handleArtistLink(seg.artistId, seg.text)}
+                >
+                  {seg.text}
+                </button>
+              ) : (
+                <span key={i}>{seg.text}</span>
+              )
+            )}
+          </p>
+        </div>
+      )}
     </div>
   );
 });
 
-function MetaRow({ label, value }: { label: string; value: string }) {
+function CreditRow({
+  label,
+  value,
+  first = false,
+}: {
+  label: string;
+  value: string;
+  first?: boolean;
+}) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] font-bold text-th-text-faint uppercase tracking-widest">
+    <div
+      className={`flex flex-col gap-1 py-4 ${first ? "" : "border-t border-white/[0.06]"}`}
+    >
+      <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">
         {label}
       </span>
-      <span className="text-[15px] text-white font-medium">{value}</span>
+      <span className="text-[15px] text-white font-medium leading-relaxed">
+        {value}
+      </span>
     </div>
   );
 }
