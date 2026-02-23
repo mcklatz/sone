@@ -1,24 +1,67 @@
-# SONE
+<div align="center">
+  <img src="sone.png" alt="SONE" width="150">
+  <h1>SONE</h1>
+  <p>The native desktop client for <a href="https://tidal.com">Tidal</a> on Linux. Lossless streaming with bit-perfect ALSA output up to 24-bit/192kHz — your DAC, not your browser's resampler.</p>
 
-An unofficial native Linux desktop client for [Tidal](https://tidal.com) music streaming.
+  [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+  [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-yellow.svg)]()
+  [![Built with Tauri 2](https://img.shields.io/badge/Built_with-Tauri_2-orange.svg)](https://v2.tauri.app/)
+</div>
 
-**A valid Tidal account and subscription is required.** SONE does not provide access to any content — it connects to Tidal's service using your own credentials, the same way the official apps do on other platforms. This project exists because Tidal does not offer an official desktop client for Linux.
+> [!IMPORTANT]
+> Requires an active [Tidal](https://tidal.com) subscription. Not affiliated with Tidal.
+
+<!-- TODO: Add a hero screenshot showcasing a custom theme (e.g. Cyberpunk or Midnight Cyan) with the now-playing drawer open -->
+
+<details>
+<summary>Table of Contents</summary>
+
+- [Features](#features)
+- [Why SONE?](#why-sone)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Tech Stack](#tech-stack)
+- [Contributing](#contributing)
+- [Disclaimer](#disclaimer)
+- [License](#license)
+
+</details>
 
 ## Features
 
-- Stream music from your Tidal library in up to lossless quality
-- Browse, search, and manage your playlists, albums, and artists
-- Queue management with playback history
-- Volume normalization (ReplayGain) with album/track mode
-- Exclusive output mode (ALSA) for dedicated audio devices
-- Bit-perfect playback for audiophile setups
-- MPRIS integration (media keys, DE widgets, taskbar controls)
-- System tray with playback controls
-- Keyboard shortcuts
-- Encrypted local storage for credentials and cache
-- Persistent sessions across restarts
+### Audio
 
-## Prerequisites
+- **Lossless FLAC and MQA streaming** up to Hi-Res (24-bit/192kHz) with automatic quality fallback
+- **Bit-perfect output** — no resampling, no dithering. Your DAC receives the unaltered decoded signal
+- **Exclusive ALSA** — bypasses PipeWire/PulseAudio entirely for direct hardware access
+- **Volume normalization** (ReplayGain) with automatic context switching between album and track gain
+- **Autoplay** — discovers and plays similar tracks when your queue ends
+
+### Interface
+
+- **Custom themes** — 9 presets and a full color picker for accent and background
+- **Lyrics** — synced lyrics display for supported tracks
+- **Queue persistence** — picks up where you left off across restarts
+- **MPRIS integration** — media keys, desktop taskbar widgets, and system media controls
+- **System tray** with playback controls and minimize-to-tray
+- **Keyboard shortcuts** for all common actions with a built-in shortcut overlay
+
+## Why SONE?
+
+SONE is a lightweight, native alternative to the official Tidal web player and Electron-based unofficial clients.
+
+- **Direct hardware access** — GStreamer talks directly to your audio hardware. Lock your DAC to the exact source format, bypassing the system mixer
+- **Lightweight** — built with Tauri and Rust. Small binary, low memory footprint
+- **Encrypted at rest** — credentials, cache, and settings are encrypted with AES-256-GCM
+- **No telemetry, no tracking** — fully open source under GPL-3.0. Your listening data stays on your machine
+
+## Installation
+
+### Download
+
+Pre-built packages for Ubuntu/Debian (.deb), Fedora (.rpm), and a portable AppImage will be available on the [GitHub Releases](https://github.com/lullabyX/sone/releases) page.
+
+### Building from source
 
 **Rust:**
 
@@ -27,9 +70,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 ```
 
-**Node.js** 18+ (via nvm, fnm, or your preferred method)
+**Node.js** 18+ (via [nvm](https://github.com/nvm-sh/nvm), [fnm](https://github.com/Schniz/fnm), or your preferred method)
 
-**System dependencies** (Ubuntu/Debian):
+**System dependencies:**
+
+<details>
+<summary>Ubuntu / Debian</summary>
 
 ```bash
 sudo apt install -y \
@@ -45,34 +91,110 @@ Optional (for exclusive ALSA output):
 ```bash
 sudo apt install -y gstreamer1.0-alsa
 ```
+</details>
 
-For other distros, install the equivalent packages (e.g. `gst-plugins-*` on Arch, `gstreamer1-plugins-*` on Fedora).
+<details>
+<summary>Fedora</summary>
 
-## Build & Run
+```bash
+sudo dnf install -y \
+    gcc gcc-c++ make curl wget file patchelf \
+    webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel librsvg2-devel openssl-devel \
+    gstreamer1-devel gstreamer1-plugins-base-devel \
+    gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-libav \
+    libsecret-devel
+```
+
+Optional (for exclusive ALSA output):
+
+```bash
+sudo dnf install -y gstreamer1-plugins-base-tools
+```
+</details>
+
+<details>
+<summary>Arch Linux</summary>
+
+```bash
+sudo pacman -S --needed \
+    base-devel curl wget file patchelf \
+    webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg openssl \
+    gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav \
+    libsecret
+```
+
+Optional (for exclusive ALSA output):
+
+```bash
+sudo pacman -S --needed gst-plugin-pipewire alsa-plugins
+```
+</details>
+
+**Build and run:**
 
 ```bash
 git clone https://github.com/lullabyX/sone.git
 cd sone
 npm install
-npm run tauri dev
+npm run tauri dev          # Development mode
+npm run tauri build        # Release build (produces .deb, .rpm, .AppImage)
 ```
 
 ## Usage
 
-1. Launch the app and click **Login with Tidal**
-2. Enter the displayed code at [link.tidal.com](https://link.tidal.com)
-3. Your library loads automatically — browse and play
+1. Launch the app
+2. Enter your Client ID (and optionally Client Secret for Hi-Res — see details below)
+3. Click **Get Login Code** and enter the displayed code at [link.tidal.com](https://link.tidal.com)
+4. Your library loads automatically — browse and play
+
+<details>
+<summary>What are Client ID and Client Secret?</summary>
+
+They are OAuth application credentials used to connect to Tidal's API. Official Tidal apps (Android, iOS, desktop) have these built in. Since SONE is an unofficial client, it does not ship with any credentials — you provide your own.
+
+SONE requires credentials from a **native Tidal application** (such as the Android or desktop client). Credentials from the [Tidal Developer Portal](https://developer.tidal.com/) (`developer.tidal.com`) **will not work** — those are for Tidal's public catalog API, which is a different system that does not support authentication or streaming.
+
+SONE does not provide or endorse any specific method for obtaining credentials. You may find guidance by searching online.
+
+**Do I need both?** No. There are two login methods:
+
+- **Device Code** — works with Client ID alone (CD-quality lossless, 16-bit/44.1kHz). Adding Client Secret unlocks Hi-Res up to 24-bit/192kHz.
+- **PKCE** — requires both Client ID and Client Secret. Supports Hi-Res up to 24-bit/192kHz.
+
+**Are my credentials safe?** Client ID and Client Secret identify an application, not your personal account. Your Tidal login is handled separately through Tidal's standard OAuth 2.0 flow — the same mechanism used by all official Tidal applications. Credentials are stored locally (encrypted at rest with AES-256-GCM) and only sent to Tidal's authentication servers.
+
+</details>
+
+<details>
+<summary>Troubleshooting</summary>
+
+**No sound?**
+Make sure GStreamer plugins are installed — you need at minimum `gstreamer1.0-plugins-base`, `gstreamer1.0-plugins-good`, `gstreamer1.0-plugins-bad`, and `gstreamer1.0-libav` (or your distro's equivalents).
+
+**"Device busy" error in exclusive mode?**
+Another application has exclusive control of the ALSA device. Close it, or select a different output device in the settings menu.
+
+**Playback errors in exclusive/bit-perfect mode?**
+Your DAC must natively support the source sample rate. If the hardware doesn't support 192kHz, exclusive mode will fail for Hi-Res streams. Try a lower quality tier or switch to normal output mode.
+
+</details>
 
 ## Tech Stack
 
-- **Backend:** Rust (Tauri 2)
+- **Backend:** Rust ([Tauri 2](https://v2.tauri.app/))
 - **Frontend:** React 19, Tailwind 4, Jotai
-- **Audio:** GStreamer
+- **Audio:** [GStreamer](https://gstreamer.freedesktop.org/)
 - **Config:** `~/.config/sone/`
+
+## Contributing
+
+Issues and pull requests are welcome on [GitHub](https://github.com/lullabyX/sone). To set up a development environment, follow the [Building from source](#building-from-source) instructions.
+
+If you enjoy using SONE, consider giving the project a star to help others find it.
 
 ## Disclaimer
 
-SONE is an independent, community-driven project. It is **not affiliated with, endorsed by, or connected to Tidal** in any way. All content is streamed directly from Tidal's service and requires a valid paid subscription. SONE does not download, redistribute, or circumvent protection of any content.
+SONE is an independent, community-driven project. It is **not affiliated with, endorsed by, or connected to Tidal** in any way. All content is streamed directly from Tidal's service and requires a valid paid subscription. SONE is a streaming client only — it does not support offline downloads, and does not redistribute or circumvent protection of any content.
 
 All trademarks belong to their respective owners.
 
