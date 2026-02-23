@@ -40,7 +40,11 @@ function extractPlaybackError(error: unknown): string {
   if (!error) return "Playback failed";
   let parsed: any = error;
   if (typeof error === "string") {
-    try { parsed = JSON.parse(error); } catch { return error; }
+    try {
+      parsed = JSON.parse(error);
+    } catch {
+      return error;
+    }
   }
   const msg = parsed?.message;
   return typeof msg === "string" ? msg : "Playback failed";
@@ -64,7 +68,10 @@ async function invokePlayWithRetry(
 ): Promise<StreamInfo> {
   for (let attempt = 0; attempt <= DEVICE_MAX_RETRIES; attempt++) {
     try {
-      return await invoke<StreamInfo>("play_tidal_track", { trackId, useTrackGain });
+      return await invoke<StreamInfo>("play_tidal_track", {
+        trackId,
+        useTrackGain,
+      });
     } catch (err: unknown) {
       if (isDeviceBusy(err) && attempt < DEVICE_MAX_RETRIES) {
         if (attempt === 0) onFirstRetry();
@@ -103,10 +110,14 @@ export function usePlaybackActions() {
       } catch (error: any) {
         console.error("Failed to play track:", error);
         store.set(isPlayingAtom, false);
-        window.dispatchEvent(new CustomEvent("playback-error", { detail: extractPlaybackError(error) }));
+        window.dispatchEvent(
+          new CustomEvent("playback-error", {
+            detail: extractPlaybackError(error),
+          }),
+        );
       }
     },
-    [store, showToast]
+    [store, showToast],
   );
 
   const pauseTrack = useCallback(async () => {
@@ -141,7 +152,11 @@ export function usePlaybackActions() {
     } catch (error) {
       console.error("Failed to resume track:", error);
       store.set(isPlayingAtom, false);
-      window.dispatchEvent(new CustomEvent("playback-error", { detail: extractPlaybackError(error) }));
+      window.dispatchEvent(
+        new CustomEvent("playback-error", {
+          detail: extractPlaybackError(error),
+        }),
+      );
     }
   }, [store, showToast]);
 
@@ -154,7 +169,7 @@ export function usePlaybackActions() {
         console.error("Failed to set volume:", error);
       }
     },
-    [store]
+    [store],
   );
 
   const getPlaybackPosition = useCallback(async (): Promise<number> => {
@@ -178,14 +193,14 @@ export function usePlaybackActions() {
     (track: Track) => {
       store.set(queueAtom, [...store.get(queueAtom), normalizeTrack(track)]);
     },
-    [store]
+    [store],
   );
 
   const playNextInQueue = useCallback(
     (track: Track) => {
       store.set(queueAtom, [normalizeTrack(track), ...store.get(queueAtom)]);
     },
-    [store]
+    [store],
   );
 
   const setQueueTracks = useCallback(
@@ -193,17 +208,17 @@ export function usePlaybackActions() {
       store.set(useTrackGainAtom, !options?.albumMode);
       store.set(queueAtom, tracks.map(normalizeTrack));
     },
-    [store]
+    [store],
   );
 
   const removeFromQueue = useCallback(
     (index: number) => {
       store.set(
         queueAtom,
-        store.get(queueAtom).filter((_, i) => i !== index)
+        store.get(queueAtom).filter((_, i) => i !== index),
       );
     },
-    [store]
+    [store],
   );
 
   const playNext = useCallback(async () => {
@@ -216,9 +231,7 @@ export function usePlaybackActions() {
       const current = store.get(currentTrackAtom);
       if (current) {
         try {
-          const historyIds = new Set(
-            store.get(historyAtom).map((t) => t.id)
-          );
+          const historyIds = new Set(store.get(historyAtom).map((t) => t.id));
           historyIds.add(current.id);
           const radio = await getTrackRadio(current.id, 30);
           const fresh = radio.filter((t) => !historyIds.has(t.id));
@@ -276,7 +289,11 @@ export function usePlaybackActions() {
       } catch (error: any) {
         console.error("Failed to play previous track:", error);
         store.set(isPlayingAtom, false);
-        window.dispatchEvent(new CustomEvent("playback-error", { detail: extractPlaybackError(error) }));
+        window.dispatchEvent(
+          new CustomEvent("playback-error", {
+            detail: extractPlaybackError(error),
+          }),
+        );
       }
     } else if (store.get(currentTrackAtom)) {
       await seekTo(0);

@@ -25,9 +25,13 @@ import type { Track, AlbumDetail, Playlist, ArtistDetail } from "../types";
 export function useFavorites() {
   const [favoriteTrackIds, setFavoriteTrackIds] = useAtom(favoriteTrackIdsAtom);
   const [favoriteAlbumIds, setFavoriteAlbumIds] = useAtom(favoriteAlbumIdsAtom);
-  const [favoritePlaylistUuids, setFavoritePlaylistUuids] = useAtom(favoritePlaylistUuidsAtom);
+  const [favoritePlaylistUuids, setFavoritePlaylistUuids] = useAtom(
+    favoritePlaylistUuidsAtom,
+  );
   const [, setFavoritePlaylists] = useAtom(favoritePlaylistsAtom);
-  const [followedArtistIds, setFollowedArtistIds] = useAtom(followedArtistIdsAtom);
+  const [followedArtistIds, setFollowedArtistIds] = useAtom(
+    followedArtistIdsAtom,
+  );
   const [favoriteMixIds, setFavoriteMixIds] = useAtom(favoriteMixIdsAtom);
   const authTokens = useAtomValue(authTokensAtom);
 
@@ -57,7 +61,7 @@ export function useFavorites() {
         throw error;
       }
     },
-    [authTokens?.user_id, setFavoriteTrackIds]
+    [authTokens?.user_id, setFavoriteTrackIds],
   );
 
   const removeFavoriteTrack = useCallback(
@@ -80,7 +84,7 @@ export function useFavorites() {
         throw error;
       }
     },
-    [authTokens?.user_id, setFavoriteTrackIds]
+    [authTokens?.user_id, setFavoriteTrackIds],
   );
 
   // ==================== Albums ====================
@@ -106,7 +110,7 @@ export function useFavorites() {
         throw error;
       }
     },
-    [authTokens?.user_id, setFavoriteAlbumIds]
+    [authTokens?.user_id, setFavoriteAlbumIds],
   );
 
   const removeFavoriteAlbum = useCallback(
@@ -129,7 +133,7 @@ export function useFavorites() {
         throw error;
       }
     },
-    [authTokens?.user_id, setFavoriteAlbumIds]
+    [authTokens?.user_id, setFavoriteAlbumIds],
   );
 
   // ==================== Playlists ====================
@@ -140,7 +144,10 @@ export function useFavorites() {
       setFavoritePlaylistUuids((prev) => new Set([...prev, playlistUuid]));
       if (playlist) {
         addPlaylistToFavoritesCache(authTokens.user_id, playlist);
-        setFavoritePlaylists((prev) => [playlist, ...prev.filter((p) => p.uuid !== playlistUuid)]);
+        setFavoritePlaylists((prev) => [
+          playlist,
+          ...prev.filter((p) => p.uuid !== playlistUuid),
+        ]);
       }
       try {
         await invoke("add_favorite_playlist", {
@@ -155,13 +162,15 @@ export function useFavorites() {
         });
         if (playlist) {
           removePlaylistFromFavoritesCache(authTokens.user_id, playlistUuid);
-          setFavoritePlaylists((prev) => prev.filter((p) => p.uuid !== playlistUuid));
+          setFavoritePlaylists((prev) =>
+            prev.filter((p) => p.uuid !== playlistUuid),
+          );
         }
         console.error("Failed to favorite playlist:", error);
         throw error;
       }
     },
-    [authTokens?.user_id, setFavoritePlaylistUuids, setFavoritePlaylists]
+    [authTokens?.user_id, setFavoritePlaylistUuids, setFavoritePlaylists],
   );
 
   const removeFavoritePlaylist = useCallback(
@@ -173,7 +182,9 @@ export function useFavorites() {
         return next;
       });
       removePlaylistFromFavoritesCache(authTokens.user_id, playlistUuid);
-      setFavoritePlaylists((prev) => prev.filter((p) => p.uuid !== playlistUuid));
+      setFavoritePlaylists((prev) =>
+        prev.filter((p) => p.uuid !== playlistUuid),
+      );
       try {
         await invoke("remove_favorite_playlist", {
           userId: authTokens.user_id,
@@ -186,7 +197,7 @@ export function useFavorites() {
         throw error;
       }
     },
-    [authTokens?.user_id, setFavoritePlaylistUuids, setFavoritePlaylists]
+    [authTokens?.user_id, setFavoritePlaylistUuids, setFavoritePlaylists],
   );
 
   // ==================== Artists (Follow/Unfollow) ====================
@@ -212,7 +223,7 @@ export function useFavorites() {
         throw error;
       }
     },
-    [authTokens?.user_id, setFollowedArtistIds]
+    [authTokens?.user_id, setFollowedArtistIds],
   );
 
   const unfollowArtist = useCallback(
@@ -230,12 +241,14 @@ export function useFavorites() {
           artistId,
         });
       } catch (error: any) {
-        setFollowedArtistIds((prev: Set<number>) => new Set([...prev, artistId]));
+        setFollowedArtistIds(
+          (prev: Set<number>) => new Set([...prev, artistId]),
+        );
         console.error("Failed to unfollow artist:", error);
         throw error;
       }
     },
-    [authTokens?.user_id, setFollowedArtistIds]
+    [authTokens?.user_id, setFollowedArtistIds],
   );
 
   // ==================== Mixes ====================
@@ -256,7 +269,7 @@ export function useFavorites() {
         throw error;
       }
     },
-    [authTokens?.user_id, setFavoriteMixIds]
+    [authTokens?.user_id, setFavoriteMixIds],
   );
 
   const removeFavoriteMix = useCallback(
@@ -275,7 +288,7 @@ export function useFavorites() {
         throw error;
       }
     },
-    [authTokens?.user_id, setFavoriteMixIds]
+    [authTokens?.user_id, setFavoriteMixIds],
   );
 
   return {

@@ -9,7 +9,13 @@ import {
   UserCheck,
   Trash2,
 } from "lucide-react";
-import { useState, useRef, useEffect, useCallback, startTransition } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  startTransition,
+} from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useToast } from "../contexts/ToastContext";
 import { type MediaItemType, type Track } from "../types";
@@ -32,12 +38,8 @@ export default function MediaContextMenu({
   cursorPosition,
   onClose,
 }: MediaContextMenuProps) {
-  const {
-    playTrack,
-    setQueueTracks,
-    addToQueue,
-    playNextInQueue,
-  } = usePlaybackActions();
+  const { playTrack, setQueueTracks, addToQueue, playNextInQueue } =
+    usePlaybackActions();
   const {
     favoriteAlbumIds,
     addFavoriteAlbum,
@@ -68,7 +70,9 @@ export default function MediaContextMenu({
 
   // "Add to playlist" sub-menu state
   const [showPlaylistSubmenu, setShowPlaylistSubmenu] = useState(false);
-  const [playlistTrackIds, setPlaylistTrackIds] = useState<number[] | null>(null);
+  const [playlistTrackIds, setPlaylistTrackIds] = useState<number[] | null>(
+    null,
+  );
   const [fetchingForPlaylist, setFetchingForPlaylist] = useState(false);
   const playlistBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -81,8 +85,7 @@ export default function MediaContextMenu({
 
   // Ownership check: is this a user-created playlist?
   const isUserPlaylist =
-    item.type === "playlist" &&
-    userPlaylists.some((p) => p.uuid === item.uuid);
+    item.type === "playlist" && userPlaylists.some((p) => p.uuid === item.uuid);
 
   // Derive favorite status from atoms (no API call needed)
   useEffect(() => {
@@ -98,7 +101,13 @@ export default function MediaContextMenu({
       setIsFav(null);
     }
     setCheckingFav(false);
-  }, [item, favoriteAlbumIds, favoritePlaylistUuids, followedArtistIds, favoriteMixIds]);
+  }, [
+    item,
+    favoriteAlbumIds,
+    favoritePlaylistUuids,
+    followedArtistIds,
+    favoriteMixIds,
+  ]);
 
   // Position the menu at cursor, clamped to viewport
   useEffect(() => {
@@ -160,11 +169,16 @@ export default function MediaContextMenu({
 
   /** Short display label for the media item */
   const rawLabel = item.type === "artist" ? item.name : item.title;
-  const itemLabel = rawLabel.length > 30 ? rawLabel.slice(0, 28) + "…" : rawLabel;
+  const itemLabel =
+    rawLabel.length > 30 ? rawLabel.slice(0, 28) + "…" : rawLabel;
 
   // Helper: fetch tracks and perform an action
   const withTracks = useCallback(
-    async (actionName: string, action: (tracks: Track[]) => void, successMsg?: string) => {
+    async (
+      actionName: string,
+      action: (tracks: Track[]) => void,
+      successMsg?: string,
+    ) => {
       setLoadingAction(actionName);
       try {
         const tracks = await fetchMediaTracks(item);
@@ -178,31 +192,43 @@ export default function MediaContextMenu({
       }
       onClose();
     },
-    [item, fetchMediaTracks, onClose, showToast]
+    [item, fetchMediaTracks, onClose, showToast],
   );
 
   const handlePlayNow = useCallback(() => {
-    withTracks("play", (tracks) => {
-      const [first, ...rest] = tracks;
-      setQueueTracks(rest);
-      playTrack(first);
-    }, `Now playing "${itemLabel}"`);
+    withTracks(
+      "play",
+      (tracks) => {
+        const [first, ...rest] = tracks;
+        setQueueTracks(rest);
+        playTrack(first);
+      },
+      `Now playing "${itemLabel}"`,
+    );
   }, [withTracks, playTrack, setQueueTracks, itemLabel]);
 
   const handlePlayNext = useCallback(() => {
-    withTracks("play next", (tracks) => {
-      // Insert tracks at the front of the queue in reverse order
-      // so the first track of the album/playlist appears first
-      for (let i = tracks.length - 1; i >= 0; i--) {
-        playNextInQueue(tracks[i]);
-      }
-    }, `"${itemLabel}" will play next`);
+    withTracks(
+      "play next",
+      (tracks) => {
+        // Insert tracks at the front of the queue in reverse order
+        // so the first track of the album/playlist appears first
+        for (let i = tracks.length - 1; i >= 0; i--) {
+          playNextInQueue(tracks[i]);
+        }
+      },
+      `"${itemLabel}" will play next`,
+    );
   }, [withTracks, playNextInQueue, itemLabel]);
 
   const handleAddToQueue = useCallback(() => {
-    withTracks("add to queue", (tracks) => {
-      tracks.forEach((t) => addToQueue(t));
-    }, `Added "${itemLabel}" to queue`);
+    withTracks(
+      "add to queue",
+      (tracks) => {
+        tracks.forEach((t) => addToQueue(t));
+      },
+      `Added "${itemLabel}" to queue`,
+    );
   }, [withTracks, addToQueue, itemLabel]);
 
   const handleAddToPlaylist = useCallback(async () => {
@@ -266,12 +292,19 @@ export default function MediaContextMenu({
     setLoadingAction(null);
     onClose();
   }, [
-    item, isFav, itemLabel,
-    addFavoriteAlbum, removeFavoriteAlbum,
-    addFavoritePlaylist, removeFavoritePlaylist,
-    followArtist, unfollowArtist,
-    addFavoriteMix, removeFavoriteMix,
-    onClose, showToast,
+    item,
+    isFav,
+    itemLabel,
+    addFavoriteAlbum,
+    removeFavoriteAlbum,
+    addFavoritePlaylist,
+    removeFavoritePlaylist,
+    followArtist,
+    unfollowArtist,
+    addFavoriteMix,
+    removeFavoriteMix,
+    onClose,
+    showToast,
   ]);
 
   const menuItemClass =
@@ -285,7 +318,10 @@ export default function MediaContextMenu({
     try {
       await deletePlaylist(item.uuid);
       showToast(`Deleted "${itemLabel}"`);
-      if (currentView.type === "playlist" && currentView.playlistId === item.uuid) {
+      if (
+        currentView.type === "playlist" &&
+        currentView.playlistId === item.uuid
+      ) {
         // Replace current history entry so back button doesn't return to deleted playlist
         const homeView = { type: "home" as const };
         window.history.replaceState(homeView, "");
@@ -297,10 +333,22 @@ export default function MediaContextMenu({
     }
     setLoadingAction(null);
     onClose();
-  }, [item, deletePlaylist, itemLabel, currentView, setCurrentView, onClose, showToast]);
+  }, [
+    item,
+    deletePlaylist,
+    itemLabel,
+    currentView,
+    setCurrentView,
+    onClose,
+    showToast,
+  ]);
 
   // Whether "Add to library" / "Follow" is supported for this item type
-  const canFavorite = item.type === "album" || item.type === "playlist" || item.type === "artist" || item.type === "mix";
+  const canFavorite =
+    item.type === "album" ||
+    item.type === "playlist" ||
+    item.type === "artist" ||
+    item.type === "mix";
 
   return (
     <>
@@ -317,9 +365,16 @@ export default function MediaContextMenu({
         onContextMenu={(e) => e.stopPropagation()}
       >
         {/* Play now */}
-        <button className={menuItemClass} onClick={handlePlayNow} disabled={!!loadingAction}>
+        <button
+          className={menuItemClass}
+          onClick={handlePlayNow}
+          disabled={!!loadingAction}
+        >
           {isLoading("play") ? (
-            <Loader2 size={18} className="shrink-0 text-th-text-muted animate-spin" />
+            <Loader2
+              size={18}
+              className="shrink-0 text-th-text-muted animate-spin"
+            />
           ) : (
             <Play size={18} className="shrink-0 text-th-text-muted" />
           )}
@@ -327,9 +382,16 @@ export default function MediaContextMenu({
         </button>
 
         {/* Play next */}
-        <button className={menuItemClass} onClick={handlePlayNext} disabled={!!loadingAction}>
+        <button
+          className={menuItemClass}
+          onClick={handlePlayNext}
+          disabled={!!loadingAction}
+        >
           {isLoading("play next") ? (
-            <Loader2 size={18} className="shrink-0 text-th-text-muted animate-spin" />
+            <Loader2
+              size={18}
+              className="shrink-0 text-th-text-muted animate-spin"
+            />
           ) : (
             <ListEnd size={18} className="shrink-0 text-th-text-muted" />
           )}
@@ -337,9 +399,16 @@ export default function MediaContextMenu({
         </button>
 
         {/* Add to queue */}
-        <button className={menuItemClass} onClick={handleAddToQueue} disabled={!!loadingAction}>
+        <button
+          className={menuItemClass}
+          onClick={handleAddToQueue}
+          disabled={!!loadingAction}
+        >
           {isLoading("add to queue") ? (
-            <Loader2 size={18} className="shrink-0 text-th-text-muted animate-spin" />
+            <Loader2
+              size={18}
+              className="shrink-0 text-th-text-muted animate-spin"
+            />
           ) : (
             <ListPlus size={18} className="shrink-0 text-th-text-muted" />
           )}
@@ -357,7 +426,10 @@ export default function MediaContextMenu({
           disabled={fetchingForPlaylist}
         >
           {fetchingForPlaylist ? (
-            <Loader2 size={18} className="shrink-0 text-th-text-muted animate-spin" />
+            <Loader2
+              size={18}
+              className="shrink-0 text-th-text-muted animate-spin"
+            />
           ) : (
             <ListMusic size={18} className="shrink-0 text-th-text-muted" />
           )}
@@ -374,7 +446,10 @@ export default function MediaContextMenu({
               disabled={!!loadingAction || checkingFav}
             >
               {isLoading("favorite") || checkingFav ? (
-                <Loader2 size={18} className="shrink-0 text-th-text-muted animate-spin" />
+                <Loader2
+                  size={18}
+                  className="shrink-0 text-th-text-muted animate-spin"
+                />
               ) : item.type === "artist" ? (
                 isFav ? (
                   <UserCheck size={18} className="shrink-0 text-th-accent" />
@@ -390,8 +465,12 @@ export default function MediaContextMenu({
               )}
               <span>
                 {item.type === "artist"
-                  ? (isFav ? "Unfollow artist" : "Follow artist")
-                  : (isFav ? "Remove from my library" : "Add to my library")}
+                  ? isFav
+                    ? "Unfollow artist"
+                    : "Follow artist"
+                  : isFav
+                    ? "Remove from my library"
+                    : "Add to my library"}
               </span>
             </button>
           </>
@@ -423,9 +502,12 @@ export default function MediaContextMenu({
             className="bg-th-elevated rounded-xl shadow-2xl max-w-[400px] w-[90%] p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-2">Delete playlist?</h3>
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Delete playlist?
+            </h3>
             <p className="text-sm text-th-text-secondary mb-6">
-              Are you sure you want to delete "{rawLabel}"? This can't be undone.
+              Are you sure you want to delete "{rawLabel}"? This can't be
+              undone.
             </p>
             <div className="flex justify-end gap-3">
               <button

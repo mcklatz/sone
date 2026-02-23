@@ -1,4 +1,11 @@
-import { Play, Pause, Music, Shuffle, Heart, MoreHorizontal } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Music,
+  Shuffle,
+  Heart,
+  MoreHorizontal,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
 import { isPlayingAtom, currentTrackAtom } from "../atoms/playback";
@@ -41,7 +48,12 @@ export default function MixPage({ mixId, mixInfo, onBack }: MixPageProps) {
       } catch (err: any) {
         if (!cancelled) {
           console.error("Failed to load mix:", err);
-          const msg = typeof err === "string" ? err : typeof err?.message === "string" ? err.message : "Failed to load mix";
+          const msg =
+            typeof err === "string"
+              ? err
+              : typeof err?.message === "string"
+                ? err.message
+                : "Failed to load mix";
           setError(msg);
         }
       } finally {
@@ -60,7 +72,7 @@ export default function MixPage({ mixId, mixInfo, onBack }: MixPageProps) {
 
   const trackIds = useMemo(
     () => new Set(tracks.map((track) => track.id)),
-    [tracks]
+    [tracks],
   );
 
   const handlePlayTrack = async (track: Track, index: number) => {
@@ -130,7 +142,10 @@ export default function MixPage({ mixId, mixInfo, onBack }: MixPageProps) {
   };
 
   // Context menu
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const displayTitle = mixInfo?.title || "Mix";
   const displaySubtitle = mixInfo?.subtitle;

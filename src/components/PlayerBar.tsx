@@ -56,13 +56,17 @@ const TrackInfoSection = memo(function TrackInfoSection() {
       </div>
       <div className="flex flex-col justify-center min-w-0 gap-0.5">
         <span
-          onClick={() => currentTrack.album?.id && navigateToAlbum(currentTrack.album.id)}
+          onClick={() =>
+            currentTrack.album?.id && navigateToAlbum(currentTrack.album.id)
+          }
           className="text-white text-[13px] font-semibold truncate hover:underline cursor-pointer leading-tight"
         >
           {currentTrack.title}
         </span>
         <span
-          onClick={() => currentTrack.artist?.id && navigateToArtist(currentTrack.artist.id)}
+          onClick={() =>
+            currentTrack.artist?.id && navigateToArtist(currentTrack.artist.id)
+          }
           className="text-th-text-secondary text-[11px] truncate hover:text-white hover:underline cursor-pointer transition-colors duration-200"
         >
           {currentTrack.artist?.name || "Unknown Artist"}
@@ -177,11 +181,11 @@ const ProgressScrubber = memo(function ProgressScrubber() {
 
       const pct = Math.max(
         0,
-        Math.min(1, (adjustedX - rect.left) / rect.width)
+        Math.min(1, (adjustedX - rect.left) / rect.width),
       );
       return pct * currentTrack.duration;
     },
-    [currentTrack]
+    [currentTrack],
   );
 
   const handleProgressMouseDown = useCallback(
@@ -212,7 +216,7 @@ const ProgressScrubber = memo(function ProgressScrubber() {
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
     },
-    [currentTrack, getTimeFromClientX, seekTo]
+    [currentTrack, getTimeFromClientX, seekTo],
   );
 
   return (
@@ -292,7 +296,8 @@ const AutoplayButton = memo(function AutoplayButton() {
 
 const TransportControls = memo(function TransportControls() {
   const isPlaying = useAtomValue(isPlayingAtom);
-  const { pauseTrack, resumeTrack, playNext, playPrevious } = usePlaybackActions();
+  const { pauseTrack, resumeTrack, playNext, playPrevious } =
+    usePlaybackActions();
 
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState(0);
@@ -382,7 +387,7 @@ const QualityBadge = memo(function QualityBadge() {
     parts.push(
       sr >= 1000
         ? `${(sr / 1000).toFixed(sr % 1000 === 0 ? 0 : 1)}kHz`
-        : `${sr}Hz`
+        : `${sr}Hz`,
     );
   }
   if (streamInfo?.codec) parts.push(streamInfo.codec);
@@ -402,8 +407,8 @@ const QualityBadge = memo(function QualityBadge() {
           isMax
             ? "bg-th-accent text-black"
             : isHiFi
-            ? "bg-th-accent/70 text-black"
-            : "bg-th-button-hover text-white"
+              ? "bg-th-accent/70 text-black"
+              : "bg-th-button-hover text-white"
         }`}
       >
         {label}
@@ -426,10 +431,13 @@ const VolumeSlider = memo(function VolumeSlider() {
     setVolume(parseFloat(e.target.value));
   };
 
-  const VolumeIcon = displayVolume === 0 ? VolumeX : displayVolume < 0.5 ? Volume1 : Volume2;
+  const VolumeIcon =
+    displayVolume === 0 ? VolumeX : displayVolume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div className={`flex items-center gap-2 group/vol w-[120px] ${bitPerfect ? "opacity-40 cursor-not-allowed" : ""}`}>
+    <div
+      className={`flex items-center gap-2 group/vol w-[120px] ${bitPerfect ? "opacity-40 cursor-not-allowed" : ""}`}
+    >
       <button
         onClick={() => {
           if (bitPerfect) return;
@@ -444,7 +452,9 @@ const VolumeSlider = memo(function VolumeSlider() {
       >
         <VolumeIcon size={16} strokeWidth={2} />
       </button>
-      <div className={`flex-1 relative rounded-full ${bitPerfect ? "cursor-not-allowed" : "cursor-pointer"}`}>
+      <div
+        className={`flex-1 relative rounded-full ${bitPerfect ? "cursor-not-allowed" : "cursor-pointer"}`}
+      >
         <input
           type="range"
           min="0"

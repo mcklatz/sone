@@ -1,10 +1,28 @@
-import { LogOut, Palette, RefreshCw, User, Keyboard, X, MonitorDown, Volume2, Infinity as InfinityIcon, Headphones, Shield, ChevronDown } from "lucide-react";
+import {
+  LogOut,
+  Palette,
+  RefreshCw,
+  User,
+  Keyboard,
+  X,
+  MonitorDown,
+  Volume2,
+  Infinity as InfinityIcon,
+  Headphones,
+  Shield,
+  ChevronDown,
+} from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAtom } from "jotai";
 import { useAuth } from "../hooks/useAuth";
 import { clearAllCache } from "../api/tidal";
-import { autoplayAtom, exclusiveModeAtom, bitPerfectAtom, exclusiveDeviceAtom } from "../atoms/playback";
+import {
+  autoplayAtom,
+  exclusiveModeAtom,
+  bitPerfectAtom,
+  exclusiveDeviceAtom,
+} from "../atoms/playback";
 import { useToast } from "../contexts/ToastContext";
 import ThemeEditor from "./ThemeEditor";
 
@@ -35,7 +53,9 @@ export default function UserMenu() {
   const [exclusiveMode, setExclusiveMode] = useAtom(exclusiveModeAtom);
   const [bitPerfect, setBitPerfect] = useAtom(bitPerfectAtom);
   const [exclusiveDevice, setExclusiveDevice] = useAtom(exclusiveDeviceAtom);
-  const [audioDevices, setAudioDevices] = useState<Array<{ id: string; name: string }>>([]);
+  const [audioDevices, setAudioDevices] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [deviceDropdownOpen, setDeviceDropdownOpen] = useState(false);
   const [autoplay, setAutoplay] = useAtom(autoplayAtom);
   const { showToast } = useToast();
@@ -43,8 +63,12 @@ export default function UserMenu() {
 
   // Load preferences (exclusive/bitPerfect/device are from Jotai atoms, hydrated by AppInitializer)
   useEffect(() => {
-    invoke<boolean>("get_minimize_to_tray").then(setMinimizeToTray).catch(() => {});
-    invoke<boolean>("get_volume_normalization").then(setVolumeNormalization).catch(() => {});
+    invoke<boolean>("get_minimize_to_tray")
+      .then(setMinimizeToTray)
+      .catch(() => {});
+    invoke<boolean>("get_volume_normalization")
+      .then(setVolumeNormalization)
+      .catch(() => {});
   }, []);
 
   // Toggle shortcuts modal from ? key
@@ -62,7 +86,9 @@ export default function UserMenu() {
           setAudioDevices(devices);
           if (!exclusiveDevice && devices.length > 0) {
             setExclusiveDevice(devices[0].id);
-            invoke("set_exclusive_device", { device: devices[0].id }).catch(() => {});
+            invoke("set_exclusive_device", { device: devices[0].id }).catch(
+              () => {},
+            );
           }
         })
         .catch(() => {});
@@ -151,7 +177,9 @@ export default function UserMenu() {
               if (bitPerfect) return;
               const next = !volumeNormalization;
               setVolumeNormalization(next);
-              invoke("set_volume_normalization", { enabled: next }).catch(() => {});
+              invoke("set_volume_normalization", { enabled: next }).catch(
+                () => {},
+              );
             }}
             className={`w-full flex items-center gap-3 px-4 py-2.5 text-[13px] transition-colors ${
               bitPerfect
@@ -168,7 +196,9 @@ export default function UserMenu() {
             >
               <div
                 className={`w-3.5 h-3.5 rounded-full bg-white mt-[2px] transition-transform ${
-                  volumeNormalization ? "translate-x-[16px]" : "translate-x-[2px]"
+                  volumeNormalization
+                    ? "translate-x-[16px]"
+                    : "translate-x-[2px]"
                 }`}
               />
             </div>
@@ -183,7 +213,11 @@ export default function UserMenu() {
                 setBitPerfect(false);
               }
               invoke("set_exclusive_mode", { enabled: next }).catch(() => {});
-              showToast(next ? "Exclusive output on — takes effect next track" : "Exclusive output off — takes effect next track");
+              showToast(
+                next
+                  ? "Exclusive output on — takes effect next track"
+                  : "Exclusive output off — takes effect next track",
+              );
             }}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-th-text-secondary hover:text-white hover:bg-th-border-subtle transition-colors"
           >
@@ -211,9 +245,13 @@ export default function UserMenu() {
                   className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md bg-th-inset border border-th-border-subtle text-[12px] text-th-text-secondary hover:border-th-accent/50 transition-colors"
                 >
                   <span className="truncate">
-                    {audioDevices.find((d) => d.id === exclusiveDevice)?.name || "Select device"}
+                    {audioDevices.find((d) => d.id === exclusiveDevice)?.name ||
+                      "Select device"}
                   </span>
-                  <ChevronDown size={12} className={`shrink-0 transition-transform ${deviceDropdownOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown
+                    size={12}
+                    className={`shrink-0 transition-transform ${deviceDropdownOpen ? "rotate-180" : ""}`}
+                  />
                 </button>
                 {deviceDropdownOpen && (
                   <div className="absolute left-4 right-4 ml-7 mt-1 bg-th-elevated border border-th-border-subtle rounded-md shadow-xl z-10 py-1 max-h-[160px] overflow-y-auto">
@@ -222,7 +260,9 @@ export default function UserMenu() {
                         key={d.id}
                         onClick={() => {
                           setExclusiveDevice(d.id);
-                          invoke("set_exclusive_device", { device: d.id }).catch(() => {});
+                          invoke("set_exclusive_device", {
+                            device: d.id,
+                          }).catch(() => {});
                           setDeviceDropdownOpen(false);
                         }}
                         className={`w-full text-left px-2.5 py-1.5 text-[12px] transition-colors ${
@@ -247,7 +287,11 @@ export default function UserMenu() {
                 const next = !bitPerfect;
                 setBitPerfect(next);
                 invoke("set_bit_perfect", { enabled: next }).catch(() => {});
-                showToast(next ? "Bit-perfect on — takes effect next track" : "Bit-perfect off — takes effect next track");
+                showToast(
+                  next
+                    ? "Bit-perfect on — takes effect next track"
+                    : "Bit-perfect off — takes effect next track",
+                );
               }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-th-text-secondary hover:text-white hover:bg-th-border-subtle transition-colors"
             >
@@ -340,7 +384,9 @@ export default function UserMenu() {
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <h2 className="text-[16px] font-bold text-white">Keyboard Shortcuts</h2>
+              <h2 className="text-[16px] font-bold text-white">
+                Keyboard Shortcuts
+              </h2>
               <button
                 onClick={() => setShortcutsOpen(false)}
                 className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-th-inset transition-colors text-th-text-muted hover:text-white"
@@ -356,7 +402,9 @@ export default function UserMenu() {
                   key={s.keys}
                   className="flex items-center justify-between py-2 px-1"
                 >
-                  <span className="text-[13px] text-th-text-secondary">{s.desc}</span>
+                  <span className="text-[13px] text-th-text-secondary">
+                    {s.desc}
+                  </span>
                   <kbd className="text-[12px] font-mono text-th-text-muted bg-th-surface px-2.5 py-1 rounded-md border border-th-border-subtle">
                     {s.keys}
                   </kbd>

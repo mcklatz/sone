@@ -1,5 +1,20 @@
-import { Play, Pause, Music, X, Shuffle, Heart, MoreHorizontal } from "lucide-react";
-import { useEffect, useMemo, useState, useCallback, useRef, startTransition } from "react";
+import {
+  Play,
+  Pause,
+  Music,
+  X,
+  Shuffle,
+  Heart,
+  MoreHorizontal,
+} from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  startTransition,
+} from "react";
 import { useStore } from "jotai";
 import { isPlayingAtom, currentTrackAtom } from "../atoms/playback";
 import { usePlaybackActions } from "../hooks/usePlaybackActions";
@@ -48,7 +63,9 @@ export default function PlaylistView({
   const cancelledRef = useRef(false);
   const allTracksRef = useRef<Track[]>([]);
 
-  useEffect(() => { allTracksRef.current = allTracks; }, [allTracks]);
+  useEffect(() => {
+    allTracksRef.current = allTracks;
+  }, [allTracks]);
 
   // Load first page only
   useEffect(() => {
@@ -69,7 +86,8 @@ export default function PlaylistView({
         setAllTracks(firstPage.items);
         setTotalTracks(firstPage.totalNumberOfItems);
         offsetRef.current = firstPage.items.length;
-        hasMoreRef.current = firstPage.items.length < firstPage.totalNumberOfItems;
+        hasMoreRef.current =
+          firstPage.items.length < firstPage.totalNumberOfItems;
       } catch (err: any) {
         if (!cancelledRef.current) {
           console.error("Failed to load playlist:", err);
@@ -81,7 +99,9 @@ export default function PlaylistView({
     };
 
     loadFirstPage();
-    return () => { cancelledRef.current = true; };
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [playlistId]);
 
   // Fetch all remaining pages in the background
@@ -91,7 +111,11 @@ export default function PlaylistView({
     bgFetchingRef.current = true;
     try {
       while (hasMoreRef.current && !cancelledRef.current) {
-        const page = await getPlaylistTracksPage(playlistId, offsetRef.current, PAGE_SIZE);
+        const page = await getPlaylistTracksPage(
+          playlistId,
+          offsetRef.current,
+          PAGE_SIZE,
+        );
         if (cancelledRef.current) return;
 
         startTransition(() => {
@@ -117,7 +141,11 @@ export default function PlaylistView({
 
     setLoadingMore(true);
     try {
-      const page = await getPlaylistTracksPage(playlistId, offsetRef.current, PAGE_SIZE);
+      const page = await getPlaylistTracksPage(
+        playlistId,
+        offsetRef.current,
+        PAGE_SIZE,
+      );
       setAllTracks((prev) => {
         const seen = new Set(prev.map((t) => t.id));
         return [...prev, ...page.items.filter((t) => !seen.has(t.id))];
@@ -147,8 +175,8 @@ export default function PlaylistView({
     tracks.forEach((t, i) => {
       if (
         t.title.toLowerCase().includes(q) ||
-        (t.artist?.name?.toLowerCase().includes(q)) ||
-        (t.album?.title?.toLowerCase().includes(q))
+        t.artist?.name?.toLowerCase().includes(q) ||
+        t.album?.title?.toLowerCase().includes(q)
       ) {
         filtered.push(t);
         numbers.push(i + 1);
@@ -163,7 +191,10 @@ export default function PlaylistView({
     }
   }, [fetchRemaining]);
 
-  const trackIds = useMemo(() => new Set(tracks.map((track) => track.id)), [tracks]);
+  const trackIds = useMemo(
+    () => new Set(tracks.map((track) => track.id)),
+    [tracks],
+  );
 
   const handlePlayTrack = async (track: Track, _index: number) => {
     try {
@@ -245,7 +276,8 @@ export default function PlaylistView({
   })();
 
   // Favorite state — driven by atom for instant updates everywhere
-  const { favoritePlaylistUuids, addFavoritePlaylist, removeFavoritePlaylist } = useFavorites();
+  const { favoritePlaylistUuids, addFavoritePlaylist, removeFavoritePlaylist } =
+    useFavorites();
   const playlistFavorited = favoritePlaylistUuids.has(playlistId);
 
   const handleToggleFavorite = async () => {
@@ -261,7 +293,10 @@ export default function PlaylistView({
   };
 
   // Context menu
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
 
@@ -341,7 +376,9 @@ export default function PlaylistView({
           <div className="flex items-center gap-1.5 text-[14px] text-th-text-muted mt-2">
             {displayCreator && (
               <>
-                <span className="text-white font-semibold">{displayCreator}</span>
+                <span className="text-white font-semibold">
+                  {displayCreator}
+                </span>
                 <span className="mx-1">•</span>
               </>
             )}
@@ -384,7 +421,9 @@ export default function PlaylistView({
                 ? "text-th-accent hover:brightness-110"
                 : "text-th-text-muted hover:text-white hover:bg-white/8"
             }`}
-            title={playlistFavorited ? "Remove from favorites" : "Add to favorites"}
+            title={
+              playlistFavorited ? "Remove from favorites" : "Add to favorites"
+            }
           >
             <Heart
               size={20}

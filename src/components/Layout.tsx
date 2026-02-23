@@ -32,7 +32,12 @@ export default function Layout({ children }: LayoutProps) {
     const el = scrollRef.current;
     if (!el) return;
 
-    autoscrollRef.current = { active: true, originY: e.clientY, deltaY: 0, rafId: 0 };
+    autoscrollRef.current = {
+      active: true,
+      originY: e.clientY,
+      deltaY: 0,
+      rafId: 0,
+    };
 
     const tick = () => {
       const state = autoscrollRef.current;
@@ -47,7 +52,8 @@ export default function Layout({ children }: LayoutProps) {
 
     const onMove = (me: MouseEvent) => {
       if (autoscrollRef.current) {
-        autoscrollRef.current.deltaY = me.clientY - autoscrollRef.current.originY;
+        autoscrollRef.current.deltaY =
+          me.clientY - autoscrollRef.current.originY;
       }
     };
 

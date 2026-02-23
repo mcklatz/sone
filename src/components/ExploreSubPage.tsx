@@ -54,7 +54,9 @@ export default function ExploreSubPage({
     };
 
     loadPage();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [apiPath]);
 
   // Check if all sections are navigation links (i.e. this is a "view all" for genres/moods/decades)

@@ -15,7 +15,7 @@ export function useDrawer() {
       setDrawerTab(tab);
       setDrawerOpen(true);
     },
-    [setDrawerTab, setDrawerOpen]
+    [setDrawerTab, setDrawerOpen],
   );
 
   return {

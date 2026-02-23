@@ -189,9 +189,7 @@ export function deriveTheme(accent: string, bgBase: string): DerivedTheme {
   }
 
   // Borders / scrollbar
-  const borderSubtle = isDark
-    ? "rgba(255,255,255,0.06)"
-    : "rgba(0,0,0,0.08)";
+  const borderSubtle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
   const scrollbar = bgButton;
   const scrollbarHover = bgButtonHover;
 

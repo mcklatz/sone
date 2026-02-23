@@ -1,10 +1,21 @@
-import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  startTransition,
+} from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigation } from "../hooks/useNavigation";
 import { useMediaPlay } from "../hooks/useMediaPlay";
 import { useFavorites } from "../hooks/useFavorites";
 import { useAtomValue } from "jotai";
-import { userPlaylistsAtom, favoritePlaylistsAtom, deletedPlaylistIdsAtom } from "../atoms/playlists";
+import {
+  userPlaylistsAtom,
+  favoritePlaylistsAtom,
+  deletedPlaylistIdsAtom,
+} from "../atoms/playlists";
 import {
   getUserPlaylists,
   getFavoriteAlbums,
@@ -56,10 +67,18 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
   } = useNavigation();
   const playMedia = useMediaPlay();
   const {
-    favoriteAlbumIds, addFavoriteAlbum, removeFavoriteAlbum,
-    favoritePlaylistUuids, addFavoritePlaylist, removeFavoritePlaylist,
-    followedArtistIds, followArtist, unfollowArtist,
-    favoriteMixIds, addFavoriteMix, removeFavoriteMix,
+    favoriteAlbumIds,
+    addFavoriteAlbum,
+    removeFavoriteAlbum,
+    favoritePlaylistUuids,
+    addFavoritePlaylist,
+    removeFavoritePlaylist,
+    followedArtistIds,
+    followArtist,
+    unfollowArtist,
+    favoriteMixIds,
+    addFavoriteMix,
+    removeFavoriteMix,
   } = useFavorites();
 
   const userPlaylists = useAtomValue(userPlaylistsAtom);
@@ -84,28 +103,45 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
   // ==================== Data Fetching ====================
 
   const fetchPage = useCallback(
-    async (offset: number, limit: number): Promise<{ items: any[]; totalNumberOfItems: number }> => {
+    async (
+      offset: number,
+      limit: number,
+    ): Promise<{ items: any[]; totalNumberOfItems: number }> => {
       switch (libraryType) {
         case "playlists": {
           if (!userId) return { items: [], totalNumberOfItems: 0 };
           const [userPl, favPl] = await Promise.all([
             getUserPlaylists(userId, offset, limit),
-            offset === 0 ? getFavoritePlaylists(userId, 0, limit) : Promise.resolve({ items: [] as Playlist[], totalNumberOfItems: 0 }),
+            offset === 0
+              ? getFavoritePlaylists(userId, 0, limit)
+              : Promise.resolve({
+                  items: [] as Playlist[],
+                  totalNumberOfItems: 0,
+                }),
           ]);
           // Merge: user playlists first, append non-duplicate favorites (first page only)
           const seen = new Set<string>();
           const merged: Playlist[] = [];
           for (const p of userPl.items) {
-            if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
+            if (!seen.has(p.uuid)) {
+              seen.add(p.uuid);
+              merged.push(p);
+            }
           }
           if (offset === 0) {
             for (const p of favPl.items) {
-              if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
+              if (!seen.has(p.uuid)) {
+                seen.add(p.uuid);
+                merged.push(p);
+              }
             }
           }
           return {
             items: merged,
-            totalNumberOfItems: Math.max(userPl.totalNumberOfItems, merged.length),
+            totalNumberOfItems: Math.max(
+              userPl.totalNumberOfItems,
+              merged.length,
+            ),
           };
         }
         case "albums": {
@@ -121,7 +157,7 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
         }
       }
     },
-    [libraryType, userId]
+    [libraryType, userId],
   );
 
   // Load first page
@@ -149,7 +185,9 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
       }
     })();
 
-    return () => { cancelledRef.current = true; };
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [fetchPage]);
 
   // Background fetch remaining
@@ -164,7 +202,10 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
           setItems((prev) => {
             const idKey = libraryType === "playlists" ? "uuid" : "id";
             const seen = new Set(prev.map((item) => item[idKey]));
-            return [...prev, ...page.items.filter((item) => !seen.has(item[idKey]))];
+            return [
+              ...prev,
+              ...page.items.filter((item) => !seen.has(item[idKey])),
+            ];
           });
           setTotalCount(page.totalNumberOfItems);
         });
@@ -188,7 +229,10 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
       setItems((prev) => {
         const idKey = libraryType === "playlists" ? "uuid" : "id";
         const seen = new Set(prev.map((item) => item[idKey]));
-        return [...prev, ...page.items.filter((item) => !seen.has(item[idKey]))];
+        return [
+          ...prev,
+          ...page.items.filter((item) => !seen.has(item[idKey])),
+        ];
       });
       setTotalCount(page.totalNumberOfItems);
       offsetRef.current += page.items.length;
@@ -208,7 +252,7 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
       (entries) => {
         if (entries[0]?.isIntersecting) loadMore();
       },
-      { rootMargin: "200px" }
+      { rootMargin: "200px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -229,7 +273,13 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
     for (const p of items) addIfValid(p);
     for (const p of favoritePlaylists) addIfValid(p);
     return merged;
-  }, [userPlaylists, items, favoritePlaylists, deletedPlaylistIds, libraryType]);
+  }, [
+    userPlaylists,
+    items,
+    favoritePlaylists,
+    deletedPlaylistIds,
+    libraryType,
+  ]);
 
   // ==================== Search / Filter ====================
 
@@ -279,16 +329,22 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, item: any) => {
       const sectionType =
-        libraryType === "artists" ? "ARTIST_LIST" :
-        libraryType === "mixes" ? "MIX_LIST" : undefined;
+        libraryType === "artists"
+          ? "ARTIST_LIST"
+          : libraryType === "mixes"
+            ? "MIX_LIST"
+            : undefined;
       const mediaItem = buildMediaItem(item, sectionType);
       if (mediaItem) {
         e.preventDefault();
         e.stopPropagation();
-        setContextMenu({ item: mediaItem, position: { x: e.clientX, y: e.clientY } });
+        setContextMenu({
+          item: mediaItem,
+          position: { x: e.clientX, y: e.clientY },
+        });
       }
     },
-    [libraryType]
+    [libraryType],
   );
 
   // ==================== Navigation ====================
@@ -301,7 +357,9 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
             title: item.title,
             image: item.image,
             description: item.description,
-            creatorName: item.creator?.name || (item.creator?.id === 0 ? "TIDAL" : undefined),
+            creatorName:
+              item.creator?.name ||
+              (item.creator?.id === 0 ? "TIDAL" : undefined),
             numberOfTracks: item.numberOfTracks,
             isUserPlaylist: userId != null && item.creator?.id === userId,
           });
@@ -325,7 +383,14 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
           break;
       }
     },
-    [libraryType, navigateToPlaylist, navigateToAlbum, navigateToArtist, navigateToMix, userId]
+    [
+      libraryType,
+      navigateToPlaylist,
+      navigateToAlbum,
+      navigateToArtist,
+      navigateToMix,
+      userId,
+    ],
   );
 
   // ==================== Play ====================
@@ -334,12 +399,15 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
     (e: React.MouseEvent, item: any) => {
       e.stopPropagation();
       const sectionType =
-        libraryType === "artists" ? "ARTIST_LIST" :
-        libraryType === "mixes" ? "MIX_LIST" : undefined;
+        libraryType === "artists"
+          ? "ARTIST_LIST"
+          : libraryType === "mixes"
+            ? "MIX_LIST"
+            : undefined;
       const mediaItem = buildMediaItem(item, sectionType);
       if (mediaItem) playMedia(mediaItem);
     },
-    [libraryType, playMedia]
+    [libraryType, playMedia],
   );
 
   // ==================== Favorites ====================
@@ -347,13 +415,23 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
   const isFavorited = useCallback(
     (item: any): boolean => {
       switch (libraryType) {
-        case "playlists": return favoritePlaylistUuids.has(item.uuid);
-        case "albums": return favoriteAlbumIds.has(item.id);
-        case "artists": return followedArtistIds.has(item.id);
-        case "mixes": return favoriteMixIds.has(item.id);
+        case "playlists":
+          return favoritePlaylistUuids.has(item.uuid);
+        case "albums":
+          return favoriteAlbumIds.has(item.id);
+        case "artists":
+          return followedArtistIds.has(item.id);
+        case "mixes":
+          return favoriteMixIds.has(item.id);
       }
     },
-    [libraryType, favoritePlaylistUuids, favoriteAlbumIds, followedArtistIds, favoriteMixIds]
+    [
+      libraryType,
+      favoritePlaylistUuids,
+      favoriteAlbumIds,
+      followedArtistIds,
+      favoriteMixIds,
+    ],
   );
 
   const handleFavoriteToggle = useCallback(
@@ -361,7 +439,8 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
       e.stopPropagation();
       switch (libraryType) {
         case "playlists":
-          if (favoritePlaylistUuids.has(item.uuid)) removeFavoritePlaylist(item.uuid);
+          if (favoritePlaylistUuids.has(item.uuid))
+            removeFavoritePlaylist(item.uuid);
           else addFavoritePlaylist(item.uuid, item);
           break;
         case "albums":
@@ -379,10 +458,20 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
       }
     },
     [
-      libraryType, favoritePlaylistUuids, favoriteAlbumIds, followedArtistIds, favoriteMixIds,
-      addFavoritePlaylist, removeFavoritePlaylist, addFavoriteAlbum, removeFavoriteAlbum,
-      followArtist, unfollowArtist, addFavoriteMix, removeFavoriteMix,
-    ]
+      libraryType,
+      favoritePlaylistUuids,
+      favoriteAlbumIds,
+      followedArtistIds,
+      favoriteMixIds,
+      addFavoritePlaylist,
+      removeFavoritePlaylist,
+      addFavoriteAlbum,
+      removeFavoriteAlbum,
+      followArtist,
+      unfollowArtist,
+      addFavoriteMix,
+      removeFavoriteMix,
+    ],
   );
 
   // ==================== Render ====================
@@ -416,10 +505,22 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
           {config.title}
         </h1>
         <p className="text-[14px] text-th-text-muted mt-1">
-          {itemCount} {libraryType === "artists" ? (itemCount === 1 ? "artist" : "artists") :
-            libraryType === "albums" ? (itemCount === 1 ? "album" : "albums") :
-            libraryType === "mixes" ? (itemCount === 1 ? "mix" : "mixes") :
-            (itemCount === 1 ? "playlist" : "playlists")}
+          {itemCount}{" "}
+          {libraryType === "artists"
+            ? itemCount === 1
+              ? "artist"
+              : "artists"
+            : libraryType === "albums"
+              ? itemCount === 1
+                ? "album"
+                : "albums"
+              : libraryType === "mixes"
+                ? itemCount === 1
+                  ? "mix"
+                  : "mixes"
+                : itemCount === 1
+                  ? "playlist"
+                  : "playlists"}
         </p>
       </div>
 
@@ -436,9 +537,11 @@ export default function LibraryViewAll({ libraryType }: LibraryViewAllProps) {
       <div className="px-8 pb-8">
         {filteredItems.length === 0 ? (
           <MediaGridEmpty
-            message={isFiltering
-              ? `No ${libraryType} match your search`
-              : `No ${libraryType} yet`}
+            message={
+              isFiltering
+                ? `No ${libraryType} match your search`
+                : `No ${libraryType} yet`
+            }
           />
         ) : (
           <MediaGrid>

@@ -7,7 +7,11 @@ import { getPageSection, getArtistViewAll } from "../api/tidal";
 import { type MediaItemType } from "../types";
 import MediaContextMenu from "./MediaContextMenu";
 import MediaCard from "./MediaCard";
-import MediaGrid, { MediaGridSkeleton, MediaGridError, MediaGridEmpty } from "./MediaGrid";
+import MediaGrid, {
+  MediaGridSkeleton,
+  MediaGridError,
+  MediaGridEmpty,
+} from "./MediaGrid";
 import {
   getItemTitle,
   getItemSubtitle,
@@ -33,12 +37,25 @@ export default function ViewAllPage({
 }: ViewAllPageProps) {
   const { playTrack, setQueueTracks } = usePlaybackActions();
   const playMedia = useMediaPlay();
-  const { navigateToAlbum, navigateToPlaylist, navigateToArtist, navigateToMix } = useNavigation();
   const {
-    favoriteAlbumIds, addFavoriteAlbum, removeFavoriteAlbum,
-    followedArtistIds, followArtist, unfollowArtist,
-    favoritePlaylistUuids, addFavoritePlaylist, removeFavoritePlaylist,
-    favoriteMixIds, addFavoriteMix, removeFavoriteMix,
+    navigateToAlbum,
+    navigateToPlaylist,
+    navigateToArtist,
+    navigateToMix,
+  } = useNavigation();
+  const {
+    favoriteAlbumIds,
+    addFavoriteAlbum,
+    removeFavoriteAlbum,
+    followedArtistIds,
+    followArtist,
+    unfollowArtist,
+    favoritePlaylistUuids,
+    addFavoritePlaylist,
+    removeFavoritePlaylist,
+    favoriteMixIds,
+    addFavoriteMix,
+    removeFavoriteMix,
   } = useFavorites();
 
   const [items, setItems] = useState<any[]>([]);
@@ -76,7 +93,7 @@ export default function ViewAllPage({
         } else {
           const result = await getPageSection(apiPath);
           const allItems = result.sections.flatMap((s) =>
-            Array.isArray(s.items) ? s.items : []
+            Array.isArray(s.items) ? s.items : [],
           );
           setItems(allItems);
         }
@@ -127,7 +144,8 @@ export default function ViewAllPage({
     }
   };
 
-  const hasArtists = items.length > 0 && items.every((item) => isArtistItem(item));
+  const hasArtists =
+    items.length > 0 && items.every((item) => isArtistItem(item));
   const hasMixes = items.length > 0 && items.every((item) => isMixItem(item));
 
   const getFavoriteProps = (item: any) => {
@@ -137,7 +155,12 @@ export default function ViewAllPage({
         onFavoriteToggle: (e: React.MouseEvent) => {
           e.stopPropagation();
           if (followedArtistIds.has(item.id)) unfollowArtist(item.id);
-          else followArtist(item.id, { id: item.id, name: item.name, picture: item.picture });
+          else
+            followArtist(item.id, {
+              id: item.id,
+              name: item.name,
+              picture: item.picture,
+            });
         },
       };
     }
@@ -159,7 +182,8 @@ export default function ViewAllPage({
         isFavorited: favoritePlaylistUuids.has(item.uuid),
         onFavoriteToggle: (e: React.MouseEvent) => {
           e.stopPropagation();
-          if (favoritePlaylistUuids.has(item.uuid)) removeFavoritePlaylist(item.uuid);
+          if (favoritePlaylistUuids.has(item.uuid))
+            removeFavoritePlaylist(item.uuid);
           else addFavoritePlaylist(item.uuid, item);
         },
       };
@@ -204,7 +228,14 @@ export default function ViewAllPage({
                   item={item}
                   onClick={() => handleItemClick(item)}
                   onContextMenu={(e) => handleContextMenu(e, item)}
-                  onPlay={!hasArtists && !hasMixes && mediaItem ? (e) => { e.stopPropagation(); playMedia(mediaItem); } : undefined}
+                  onPlay={
+                    !hasArtists && !hasMixes && mediaItem
+                      ? (e) => {
+                          e.stopPropagation();
+                          playMedia(mediaItem);
+                        }
+                      : undefined
+                  }
                   isArtist={isArtistItem(item) || hasArtists}
                   showPlayButton={!hasArtists && !hasMixes}
                   isFavorited={favProps.isFavorited}

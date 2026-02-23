@@ -45,7 +45,7 @@ function formatTotalDuration(seconds: number): string {
   if (hours > 0) {
     return `${hours}:${String(mins).padStart(2, "0")}:${String(secs).padStart(
       2,
-      "0"
+      "0",
     )}`;
   }
   return `${mins}:${String(secs).padStart(2, "0")}`;
@@ -268,7 +268,7 @@ export default function AlbumView({
         }
       }
     },
-    [navigateToAlbum, navigateToArtist, navigateToPlaylist, navigateToMix]
+    [navigateToAlbum, navigateToArtist, navigateToPlaylist, navigateToMix],
   );
 
   const handleCardContextMenu = useCallback(
@@ -320,7 +320,7 @@ export default function AlbumView({
         });
       }
     },
-    []
+    [],
   );
 
   if (loading) {

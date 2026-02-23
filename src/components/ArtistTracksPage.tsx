@@ -45,12 +45,23 @@ export default function ArtistTracksPage({
       } catch (err: any) {
         if (!cancelled) {
           console.error("[ArtistTracksPage] load error:", err);
-          const parsed = typeof err === "string" ? (() => { try { return JSON.parse(err); } catch { return null; } })() : err;
+          const parsed =
+            typeof err === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(err);
+                  } catch {
+                    return null;
+                  }
+                })()
+              : err;
           const msg = parsed?.message;
           if (typeof msg === "string") {
             setError(msg);
           } else if (msg && typeof msg === "object") {
-            setError(`API ${msg.status}: ${typeof msg.body === "string" ? msg.body.slice(0, 200) : JSON.stringify(msg.body).slice(0, 200)}`);
+            setError(
+              `API ${msg.status}: ${typeof msg.body === "string" ? msg.body.slice(0, 200) : JSON.stringify(msg.body).slice(0, 200)}`,
+            );
           } else {
             setError(typeof err === "string" ? err : "Failed to load tracks");
           }
@@ -61,7 +72,9 @@ export default function ArtistTracksPage({
     };
 
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [artistId]);
 
   const handleLoadMore = useCallback(async () => {
@@ -69,7 +82,11 @@ export default function ArtistTracksPage({
     loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      const data = await getArtistTopTracksAll(artistId, tracks.length, PAGE_SIZE);
+      const data = await getArtistTopTracksAll(
+        artistId,
+        tracks.length,
+        PAGE_SIZE,
+      );
       setTracks((prev) => [...prev, ...data.items]);
       setHasMore(data.hasMore);
     } catch (err) {
@@ -82,7 +99,7 @@ export default function ArtistTracksPage({
 
   const trackIds = useMemo(
     () => new Set(tracks.map((t) => t.id).filter(Boolean)),
-    [tracks]
+    [tracks],
   );
 
   const handlePlayTrack = async (track: Track, index: number) => {
@@ -125,7 +142,9 @@ export default function ArtistTracksPage({
   };
 
   const allPlaying = !!(
-    currentTrack && trackIds.has(currentTrack.id) && isPlaying
+    currentTrack &&
+    trackIds.has(currentTrack.id) &&
+    isPlaying
   );
 
   if (loading) {
@@ -136,7 +155,10 @@ export default function ArtistTracksPage({
         </div>
         <div className="px-8 flex flex-col gap-1">
           {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="h-14 bg-th-surface-hover/50 rounded animate-pulse" />
+            <div
+              key={i}
+              className="h-14 bg-th-surface-hover/50 rounded animate-pulse"
+            />
           ))}
         </div>
       </div>

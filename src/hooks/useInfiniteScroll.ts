@@ -1,7 +1,10 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 
 interface UseInfiniteScrollOptions<T> {
-  fetchPage: (offset: number, limit: number) => Promise<{ items: T[]; totalNumberOfItems: number }>;
+  fetchPage: (
+    offset: number,
+    limit: number,
+  ) => Promise<{ items: T[]; totalNumberOfItems: number }>;
   pageSize?: number;
   enabled?: boolean;
 }
@@ -30,30 +33,36 @@ export function useInfiniteScroll<T>({
   const hasMoreRef = useRef(true);
   const enabledPrevRef = useRef(false);
 
-  const loadPage = useCallback(async (currentOffset: number, isInitial: boolean) => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    if (isInitial) setIsInitialLoading(true);
-    else setIsLoadingMore(true);
+  const loadPage = useCallback(
+    async (currentOffset: number, isInitial: boolean) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      if (isInitial) setIsInitialLoading(true);
+      else setIsLoadingMore(true);
 
-    try {
-      const result = await fetchPage(currentOffset, pageSize);
-      setItems(prev => currentOffset === 0 ? result.items : [...prev, ...result.items]);
-      const newOffset = currentOffset + result.items.length;
-      offsetRef.current = newOffset;
-      const more = newOffset < result.totalNumberOfItems && result.items.length > 0;
-      hasMoreRef.current = more;
-      setHasMore(more);
-    } catch (err) {
-      console.error("Failed to load page:", err);
-      hasMoreRef.current = false;
-      setHasMore(false);
-    } finally {
-      if (isInitial) setIsInitialLoading(false);
-      else setIsLoadingMore(false);
-      loadingRef.current = false;
-    }
-  }, [fetchPage, pageSize]);
+      try {
+        const result = await fetchPage(currentOffset, pageSize);
+        setItems((prev) =>
+          currentOffset === 0 ? result.items : [...prev, ...result.items],
+        );
+        const newOffset = currentOffset + result.items.length;
+        offsetRef.current = newOffset;
+        const more =
+          newOffset < result.totalNumberOfItems && result.items.length > 0;
+        hasMoreRef.current = more;
+        setHasMore(more);
+      } catch (err) {
+        console.error("Failed to load page:", err);
+        hasMoreRef.current = false;
+        setHasMore(false);
+      } finally {
+        if (isInitial) setIsInitialLoading(false);
+        else setIsLoadingMore(false);
+        loadingRef.current = false;
+      }
+    },
+    [fetchPage, pageSize],
+  );
 
   // Initial load when enabled changes to true
   useEffect(() => {
@@ -81,11 +90,15 @@ export function useInfiniteScroll<T>({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && !loadingRef.current && hasMoreRef.current) {
+        if (
+          entries[0]?.isIntersecting &&
+          !loadingRef.current &&
+          hasMoreRef.current
+        ) {
           loadPage(offsetRef.current, false);
         }
       },
-      { rootMargin: "200px" }
+      { rootMargin: "200px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -100,5 +113,12 @@ export function useInfiniteScroll<T>({
     loadPage(0, true);
   }, [loadPage]);
 
-  return { items, isInitialLoading, isLoadingMore, hasMore, sentinelRef, reset };
+  return {
+    items,
+    isInitialLoading,
+    isLoadingMore,
+    hasMore,
+    sentinelRef,
+    reset,
+  };
 }

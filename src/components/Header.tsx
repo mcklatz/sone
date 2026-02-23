@@ -1,7 +1,4 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigation } from "../hooks/useNavigation";
 import UserMenu from "./UserMenu";
 import SearchBar from "./SearchBar";

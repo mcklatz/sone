@@ -1,7 +1,11 @@
 import { useCallback } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { invoke } from "@tauri-apps/api/core";
-import { userPlaylistsAtom, favoritePlaylistsAtom, deletedPlaylistIdsAtom } from "../atoms/playlists";
+import {
+  userPlaylistsAtom,
+  favoritePlaylistsAtom,
+  deletedPlaylistIdsAtom,
+} from "../atoms/playlists";
 import { authTokensAtom } from "../atoms/auth";
 import { invalidateCache, getUserPlaylists } from "../api/tidal";
 import type { Playlist } from "../types";
@@ -30,16 +34,18 @@ export function usePlaylists() {
         throw error;
       }
     },
-    [authTokens?.user_id, setUserPlaylists]
+    [authTokens?.user_id, setUserPlaylists],
   );
 
   // Background re-fetch user playlists to pick up server-side changes (image, exact count)
   const refreshUserPlaylists = useCallback(() => {
     if (!authTokens?.user_id) return;
     const userId = authTokens.user_id;
-    getUserPlaylists(userId, 0, 50).then((res) => {
-      if (res.items?.length) setUserPlaylists(res.items);
-    }).catch(() => {});
+    getUserPlaylists(userId, 0, 50)
+      .then((res) => {
+        if (res.items?.length) setUserPlaylists(res.items);
+      })
+      .catch(() => {});
   }, [authTokens?.user_id, setUserPlaylists]);
 
   const updatePlaylistTrackCount = useCallback(
@@ -47,13 +53,16 @@ export function usePlaylists() {
       setUserPlaylists((prev) =>
         prev.map((p) =>
           p.uuid === playlistId
-            ? { ...p, numberOfTracks: Math.max(0, (p.numberOfTracks ?? 0) + delta) }
-            : p
-        )
+            ? {
+                ...p,
+                numberOfTracks: Math.max(0, (p.numberOfTracks ?? 0) + delta),
+              }
+            : p,
+        ),
       );
       invalidateCache("user-playlists");
     },
-    [setUserPlaylists]
+    [setUserPlaylists],
   );
 
   const addTrackToPlaylist = useCallback(
@@ -72,7 +81,7 @@ export function usePlaylists() {
         throw error;
       }
     },
-    [updatePlaylistTrackCount, refreshUserPlaylists]
+    [updatePlaylistTrackCount, refreshUserPlaylists],
   );
 
   const removeTrackFromPlaylist = useCallback(
@@ -91,7 +100,7 @@ export function usePlaylists() {
         throw error;
       }
     },
-    [updatePlaylistTrackCount, refreshUserPlaylists]
+    [updatePlaylistTrackCount, refreshUserPlaylists],
   );
 
   const deletePlaylist = useCallback(
@@ -103,8 +112,12 @@ export function usePlaylists() {
           playlistId,
         });
         setUserPlaylists((prev) => prev.filter((p) => p.uuid !== playlistId));
-        setFavoritePlaylists((prev) => prev.filter((p) => p.uuid !== playlistId));
-        setDeletedPlaylistIds((prev: Set<string>) => new Set(prev).add(playlistId));
+        setFavoritePlaylists((prev) =>
+          prev.filter((p) => p.uuid !== playlistId),
+        );
+        setDeletedPlaylistIds((prev: Set<string>) =>
+          new Set(prev).add(playlistId),
+        );
         invalidateCache(`playlist:${playlistId}`);
         invalidateCache(`playlist-page:${playlistId}`);
         invalidateCache("user-playlists");
@@ -114,7 +127,12 @@ export function usePlaylists() {
         throw error;
       }
     },
-    [authTokens?.user_id, setUserPlaylists, setFavoritePlaylists, setDeletedPlaylistIds]
+    [
+      authTokens?.user_id,
+      setUserPlaylists,
+      setFavoritePlaylists,
+      setDeletedPlaylistIds,
+    ],
   );
 
   const addTracksToPlaylist = useCallback(
@@ -133,7 +151,7 @@ export function usePlaylists() {
         throw error;
       }
     },
-    [updatePlaylistTrackCount, refreshUserPlaylists]
+    [updatePlaylistTrackCount, refreshUserPlaylists],
   );
 
   return {

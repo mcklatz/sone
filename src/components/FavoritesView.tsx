@@ -1,5 +1,12 @@
 import { Heart } from "lucide-react";
-import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  startTransition,
+} from "react";
 import { useAtomValue } from "jotai";
 import { usePlaybackActions } from "../hooks/usePlaybackActions";
 import { useAuth } from "../hooks/useAuth";
@@ -35,7 +42,9 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
   const allTracksRef = useRef<Track[]>([]);
 
   // Keep ref in sync with state so async callbacks read the latest value
-  useEffect(() => { allTracksRef.current = allTracks; }, [allTracks]);
+  useEffect(() => {
+    allTracksRef.current = allTracks;
+  }, [allTracks]);
 
   // Load first page only
   useEffect(() => {
@@ -63,7 +72,8 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
         setAllTracks(firstPage.items);
         setTotalTracks(firstPage.totalNumberOfItems);
         offsetRef.current = firstPage.items.length;
-        hasMoreRef.current = firstPage.items.length < firstPage.totalNumberOfItems;
+        hasMoreRef.current =
+          firstPage.items.length < firstPage.totalNumberOfItems;
       } catch (err: any) {
         if (!cancelledRef.current) {
           console.error("Failed to load favorites:", err);
@@ -75,7 +85,9 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
     };
 
     loadFavorites();
-    return () => { cancelledRef.current = true; };
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [authTokens?.user_id]);
 
   // Fetch all remaining pages in the background, appending to state as they arrive
@@ -87,7 +99,11 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
     bgFetchingRef.current = true;
     try {
       while (hasMoreRef.current && !cancelledRef.current) {
-        const page = await getFavoriteTracks(userId, offsetRef.current, PAGE_SIZE);
+        const page = await getFavoriteTracks(
+          userId,
+          offsetRef.current,
+          PAGE_SIZE,
+        );
         if (cancelledRef.current) return;
 
         startTransition(() => {
@@ -116,7 +132,11 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
     try {
       const userId = authTokens?.user_id;
       if (userId == null) return;
-      const page = await getFavoriteTracks(userId, offsetRef.current, PAGE_SIZE);
+      const page = await getFavoriteTracks(
+        userId,
+        offsetRef.current,
+        PAGE_SIZE,
+      );
       setAllTracks((prev) => {
         const seen = new Set(prev.map((t) => t.id));
         return [...prev, ...page.items.filter((t) => !seen.has(t.id))];
@@ -136,7 +156,7 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
   // Filter out unfavorited tracks in real-time
   const tracks = useMemo(
     () => allTracks.filter((t) => favoriteTrackIds.has(t.id)),
-    [allTracks, favoriteTrackIds]
+    [allTracks, favoriteTrackIds],
   );
 
   // Local search / filter (debounce handled inside DebouncedFilterInput)
@@ -151,8 +171,8 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
     tracks.forEach((t, i) => {
       if (
         t.title.toLowerCase().includes(q) ||
-        (t.artist?.name?.toLowerCase().includes(q)) ||
-        (t.album?.title?.toLowerCase().includes(q))
+        t.artist?.name?.toLowerCase().includes(q) ||
+        t.album?.title?.toLowerCase().includes(q)
       ) {
         filtered.push(t);
         numbers.push(i + 1);
@@ -178,7 +198,9 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
       // Kick off background fetch for the rest if needed
       if (hasMoreRef.current && !bgFetchingRef.current) {
         await fetchRemaining();
-        const full = allTracksRef.current.filter((t) => favoriteTrackIds.has(t.id));
+        const full = allTracksRef.current.filter((t) =>
+          favoriteTrackIds.has(t.id),
+        );
         const playedIndex = full.findIndex((t) => t.id === track.id);
         if (playedIndex >= 0) {
           setQueueTracks(full.slice(playedIndex + 1));
@@ -188,7 +210,6 @@ export default function FavoritesView({ onBack }: FavoritesViewProps) {
       console.error("Failed to play track:", err);
     }
   };
-
 
   if (loading) {
     return <DetailPageSkeleton type="favorites" />;

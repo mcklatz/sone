@@ -1,10 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState, useCallback } from "react";
 import MediaCard from "./MediaCard";
-import {
-  getItemId,
-  buildMediaItem,
-} from "../utils/itemHelpers";
+import { getItemId, buildMediaItem } from "../utils/itemHelpers";
 import { useMediaPlay } from "../hooks/useMediaPlay";
 
 interface SectionData {
@@ -39,10 +36,18 @@ export default function CardScrollSection({
   onCardClick,
   onContextMenu,
   onViewAll,
-  favoriteAlbumIds, addFavoriteAlbum, removeFavoriteAlbum,
-  favoritePlaylistUuids, addFavoritePlaylist, removeFavoritePlaylist,
-  followedArtistIds, followArtist, unfollowArtist,
-  favoriteMixIds, addFavoriteMix, removeFavoriteMix,
+  favoriteAlbumIds,
+  addFavoriteAlbum,
+  removeFavoriteAlbum,
+  favoritePlaylistUuids,
+  addFavoritePlaylist,
+  removeFavoritePlaylist,
+  followedArtistIds,
+  followArtist,
+  unfollowArtist,
+  favoriteMixIds,
+  addFavoriteMix,
+  removeFavoriteMix,
 }: CardScrollSectionProps) {
   const playMedia = useMediaPlay();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -132,13 +137,19 @@ export default function CardScrollSection({
             onFavoriteToggle = (e) => {
               e.stopPropagation();
               if (followedArtistIds.has(item.id)) unfollowArtist(item.id);
-              else followArtist(item.id, { id: item.id, name: item.name, picture: item.picture });
+              else
+                followArtist(item.id, {
+                  id: item.id,
+                  name: item.name,
+                  picture: item.picture,
+                });
             };
           } else if (sectionType === "PLAYLIST_LIST" && item.uuid) {
             isFavorited = favoritePlaylistUuids.has(item.uuid);
             onFavoriteToggle = (e) => {
               e.stopPropagation();
-              if (favoritePlaylistUuids.has(item.uuid)) removeFavoritePlaylist(item.uuid);
+              if (favoritePlaylistUuids.has(item.uuid))
+                removeFavoritePlaylist(item.uuid);
               else addFavoritePlaylist(item.uuid, item);
             };
           } else if (sectionType === "MIX_LIST") {
@@ -161,7 +172,14 @@ export default function CardScrollSection({
               item={item}
               onClick={() => onCardClick(item, sectionType)}
               onContextMenu={(e) => onContextMenu(e, item, sectionType)}
-              onPlay={mediaItem ? (e) => { e.stopPropagation(); playMedia(mediaItem); } : undefined}
+              onPlay={
+                mediaItem
+                  ? (e) => {
+                      e.stopPropagation();
+                      playMedia(mediaItem);
+                    }
+                  : undefined
+              }
               isArtist={isArtistSection}
               showPlayButton
               isFavorited={isFavorited}

@@ -42,7 +42,11 @@ function fetchCachedImageUrl(src: string): Promise<string> {
     const blobUrl = URL.createObjectURL(blob);
     const size = arr.byteLength;
     evictBlobsIfNeeded(size);
-    blobCache.set(src, { url: blobUrl, size, accessOrder: ++blobAccessCounter });
+    blobCache.set(src, {
+      url: blobUrl,
+      size,
+      accessOrder: ++blobAccessCounter,
+    });
     blobTotalBytes += size;
     return blobUrl;
   });
@@ -82,7 +86,9 @@ function TidalImageComponent({
         if (!cancelled) setHasError(true);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [src]);
 
   if (!src || hasError) {

@@ -134,7 +134,11 @@ export function SearchPageSkeleton() {
 }
 
 /** Skeleton for album / playlist / mix / radio pages with header + track list */
-export function DetailPageSkeleton({ type = "album" }: { type?: "album" | "playlist" | "mix" | "radio" | "favorites" }) {
+export function DetailPageSkeleton({
+  type = "album",
+}: {
+  type?: "album" | "playlist" | "mix" | "radio" | "favorites";
+}) {
   const showControls = type !== "favorites";
   const showFilter = type === "playlist" || type === "favorites";
 
@@ -148,7 +152,9 @@ export function DetailPageSkeleton({ type = "album" }: { type?: "album" | "playl
         <div className="flex flex-col gap-3 pb-2 flex-1 min-w-0">
           <Pulse className="w-16 h-3 rounded-full" />
           <Pulse className="w-[60%] h-10 rounded-lg" />
-          {type === "playlist" && <Pulse className="w-[40%] h-4 rounded-full" />}
+          {type === "playlist" && (
+            <Pulse className="w-[40%] h-4 rounded-full" />
+          )}
           <Pulse className="w-24 h-3 rounded-full mt-1" />
         </div>
       </div>

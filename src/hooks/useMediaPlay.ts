@@ -19,6 +19,6 @@ export function useMediaPlay() {
         console.error("Failed to play media:", err);
       }
     },
-    [playTrack, setQueueTracks]
+    [playTrack, setQueueTracks],
   );
 }

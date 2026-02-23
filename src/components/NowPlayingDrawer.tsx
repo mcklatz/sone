@@ -5,7 +5,6 @@ import {
   Mic2,
   Users,
   Music,
-
   Play,
   Heart,
   MoreHorizontal,
@@ -26,7 +25,12 @@ import { useDrawer } from "../hooks/useDrawer";
 import { useFavorites } from "../hooks/useFavorites";
 import { useNavigation } from "../hooks/useNavigation";
 import { useToast } from "../contexts/ToastContext";
-import { getTrackRadio, getTrackLyrics, getTrackCredits, getArtistBio } from "../api/tidal";
+import {
+  getTrackRadio,
+  getTrackLyrics,
+  getTrackCredits,
+  getArtistBio,
+} from "../api/tidal";
 import BioText from "./BioText";
 import {
   getTidalImageUrl,
@@ -50,7 +54,11 @@ const TABS: { id: TabId; label: string; icon: typeof ListMusic }[] = [
 
 const QUEUE_ROW_HEIGHT = 56; // px — matches py-2 (8+8) + h-10 (40) content
 
-const QueueTab = memo(function QueueTab({ scrollEl }: { scrollEl: HTMLDivElement }) {
+const QueueTab = memo(function QueueTab({
+  scrollEl,
+}: {
+  scrollEl: HTMLDivElement;
+}) {
   const currentTrack = useAtomValue(currentTrackAtom);
   const queue = useAtomValue(queueAtom);
   const history = useAtomValue(historyAtom);
@@ -106,7 +114,7 @@ const QueueTab = memo(function QueueTab({ scrollEl }: { scrollEl: HTMLDivElement
       setDragIdx(null);
       setDropIdx(null);
     },
-    [setQueueTracks]
+    [setQueueTracks],
   );
 
   const handleDragEnd = useCallback(() => {
@@ -130,7 +138,7 @@ const QueueTab = memo(function QueueTab({ scrollEl }: { scrollEl: HTMLDivElement
         showToast("Failed to update Loved tracks", "error");
       }
     },
-    [favoriteTrackIds, addFavoriteTrack, removeFavoriteTrack, showToast]
+    [favoriteTrackIds, addFavoriteTrack, removeFavoriteTrack, showToast],
   );
 
   const handleArtistClick = useCallback(
@@ -143,7 +151,7 @@ const QueueTab = memo(function QueueTab({ scrollEl }: { scrollEl: HTMLDivElement
         });
       }
     },
-    [navigateToArtist, setDrawerOpen]
+    [navigateToArtist, setDrawerOpen],
   );
 
   const handleAlbumClick = useCallback(
@@ -157,7 +165,7 @@ const QueueTab = memo(function QueueTab({ scrollEl }: { scrollEl: HTMLDivElement
         });
       }
     },
-    [navigateToAlbum, setDrawerOpen]
+    [navigateToAlbum, setDrawerOpen],
   );
 
   /** Shared props builder for TrackRow to avoid repetition */
@@ -175,7 +183,7 @@ const QueueTab = memo(function QueueTab({ scrollEl }: { scrollEl: HTMLDivElement
       handleToggleFavorite,
       handleArtistClick,
       handleAlbumClick,
-    ]
+    ],
   );
 
   const virtualizer = useVirtualizer({
@@ -239,7 +247,9 @@ const QueueTab = memo(function QueueTab({ scrollEl }: { scrollEl: HTMLDivElement
               Clear
             </button>
           </div>
-          <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+          <div
+            style={{ height: virtualizer.getTotalSize(), position: "relative" }}
+          >
             {virtualizer.getVirtualItems().map((vItem) => {
               const i = vItem.index;
               const track = queue[i];
@@ -355,7 +365,7 @@ function SuggestedTrackRow({
       e.stopPropagation();
       onAddToQueue(track);
     },
-    [track, onAddToQueue]
+    [track, onAddToQueue],
   );
 
   const handlePlayClick = useCallback(
@@ -363,7 +373,7 @@ function SuggestedTrackRow({
       e.stopPropagation();
       onPlay(track);
     },
-    [track, onPlay]
+    [track, onPlay],
   );
 
   const handleToggleFavorite = useCallback(
@@ -371,7 +381,7 @@ function SuggestedTrackRow({
       e.stopPropagation();
       onToggleFavorite(track.id, isFav, track);
     },
-    [track, isFav, onToggleFavorite]
+    [track, isFav, onToggleFavorite],
   );
 
   const handleAddToQueue = useCallback(
@@ -379,7 +389,7 @@ function SuggestedTrackRow({
       e.stopPropagation();
       onAddToQueue(track);
     },
-    [track, onAddToQueue]
+    [track, onAddToQueue],
   );
 
   const handleDotsClick = useCallback((e: React.MouseEvent) => {
@@ -562,7 +572,7 @@ const SuggestedTab = memo(function SuggestedTab() {
         track.title.length > 30 ? track.title.slice(0, 28) + "…" : track.title;
       showToast(`Added "${label}" to queue`, "success");
     },
-    [addToQueue, showToast]
+    [addToQueue, showToast],
   );
 
   const handleToggleFavorite = useCallback(
@@ -579,7 +589,7 @@ const SuggestedTab = memo(function SuggestedTab() {
         showToast("Failed to update Loved tracks", "error");
       }
     },
-    [addFavoriteTrack, removeFavoriteTrack, showToast]
+    [addFavoriteTrack, removeFavoriteTrack, showToast],
   );
 
   const handleArtistClick = useCallback(
@@ -592,7 +602,7 @@ const SuggestedTab = memo(function SuggestedTab() {
         });
       }
     },
-    [navigateToArtist, setDrawerOpen]
+    [navigateToArtist, setDrawerOpen],
   );
 
   const handleAlbumClick = useCallback(
@@ -606,7 +616,7 @@ const SuggestedTab = memo(function SuggestedTab() {
         });
       }
     },
-    [navigateToAlbum, setDrawerOpen]
+    [navigateToAlbum, setDrawerOpen],
   );
 
   if (loading) {
@@ -683,8 +693,8 @@ function parseTimestamp(tag: string): number {
       m[3].length === 1
         ? parseInt(m[3], 10) * 100
         : m[3].length === 2
-        ? parseInt(m[3], 10) * 10
-        : parseInt(m[3], 10);
+          ? parseInt(m[3], 10) * 10
+          : parseInt(m[3], 10);
   }
   return mins * 60 + secs + ms / 1000;
 }
@@ -703,7 +713,7 @@ function parseLrc(subtitles: string): LrcLine[] {
       (_match, tag) => {
         timestamps.push(parseTimestamp(tag));
         return "";
-      }
+      },
     );
 
     const text = stripped.trim();
@@ -741,8 +751,8 @@ const LyricsLine = memo(function LyricsLine({
         isActive
           ? "scale-[1.22] font-bold text-white"
           : isPast
-          ? "text-th-text-disabled"
-          : "text-th-text-faint"
+            ? "text-th-text-disabled"
+            : "text-th-text-faint"
       }`}
       style={isActive ? { willChange: "transform" } : undefined}
     >
@@ -765,7 +775,7 @@ const LyricsTab = memo(function LyricsTab() {
   const lineRefs = useRef<(HTMLParagraphElement | null)[]>([]);
   const isAutoScrolling = useRef(false);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined
+    undefined,
   );
   const activeLineRef = useRef(-1);
 
@@ -871,7 +881,7 @@ const LyricsTab = memo(function LyricsTab() {
     (i: number) => (el: HTMLParagraphElement | null) => {
       lineRefs.current[i] = el;
     },
-    []
+    [],
   );
 
   if (loading) {
@@ -962,7 +972,9 @@ function SkeletonBar({ className = "" }: { className?: string }) {
 
 function SkeletonRow({ first = false }: { first?: boolean }) {
   return (
-    <div className={`flex flex-col gap-1.5 py-4 ${first ? "" : "border-t border-white/[0.06]"}`}>
+    <div
+      className={`flex flex-col gap-1.5 py-4 ${first ? "" : "border-t border-white/[0.06]"}`}
+    >
       <SkeletonBar className="h-3 w-20" />
       <SkeletonBar className="h-[18px] w-48" />
     </div>
@@ -1035,10 +1047,11 @@ const CreditsTab = memo(function CreditsTab() {
       setDrawerOpen(false);
       navigateToArtist(artistId, { name });
     },
-    [navigateToArtist, setDrawerOpen]
+    [navigateToArtist, setDrawerOpen],
   );
 
-  const hasNoCredits = !creditsLoading && (creditsError || credits.length === 0);
+  const hasNoCredits =
+    !creditsLoading && (creditsError || credits.length === 0);
   const releaseDate = currentTrack?.album?.releaseDate
     ? (() => {
         const d = new Date(currentTrack.album!.releaseDate!);
@@ -1104,7 +1117,11 @@ const CreditsTab = memo(function CreditsTab() {
       {!bioLoading && bio && (
         <div className="flex flex-col pt-6 mt-2">
           <h3 className="text-[16px] font-bold text-white mb-3">Bio</h3>
-          <BioText bio={bio} onArtistClick={handleArtistLink} className="text-white/80" />
+          <BioText
+            bio={bio}
+            onArtistClick={handleArtistLink}
+            className="text-white/80"
+          />
         </div>
       )}
     </div>
@@ -1463,9 +1480,7 @@ export default function NowPlayingDrawer() {
 
           {/* Tab content — only active tab mounted (Vaul pattern: always mounted, CSS-controlled visibility) */}
           <div className="flex-1 overflow-hidden relative">
-            {activeTab === "queue" && (
-              <QueueTabWrapper />
-            )}
+            {activeTab === "queue" && <QueueTabWrapper />}
             {activeTab === "suggested" && (
               <div className="absolute inset-0 overflow-y-auto px-6 py-4 scrollbar-thin scrollbar-thumb-th-button scrollbar-track-transparent">
                 <SuggestedTab />

@@ -1,7 +1,7 @@
 // Helper to convert Tidal cover UUID to image URL
 export function getTidalImageUrl(
   coverUuid: string | undefined,
-  size: number = 320
+  size: number = 320,
 ): string {
   if (!coverUuid) return "";
 
@@ -31,8 +31,21 @@ export interface Track {
   id: number;
   title: string;
   version?: string;
-  artist?: { id: number; name: string; picture?: string; artistType?: string; handle?: string };
-  album?: { id: number; title: string; cover?: string; vibrantColor?: string; videoCover?: string; releaseDate?: string };
+  artist?: {
+    id: number;
+    name: string;
+    picture?: string;
+    artistType?: string;
+    handle?: string;
+  };
+  album?: {
+    id: number;
+    title: string;
+    cover?: string;
+    vibrantColor?: string;
+    videoCover?: string;
+    releaseDate?: string;
+  };
   duration: number;
   audioQuality?: string;
   trackNumber?: number;
@@ -61,7 +74,13 @@ export interface AlbumDetail {
   cover?: string;
   vibrantColor?: string;
   videoCover?: string;
-  artist?: { id: number; name: string; picture?: string; artistType?: string; handle?: string };
+  artist?: {
+    id: number;
+    name: string;
+    picture?: string;
+    artistType?: string;
+    handle?: string;
+  };
   numberOfTracks?: number;
   numberOfVideos?: number;
   numberOfVolumes?: number;
@@ -376,9 +395,27 @@ export interface ArtistPageSection {
 
 /** Union type describing a right-clickable media item (album / playlist / mix / artist) */
 export type MediaItemType =
-  | { type: "album"; id: number; title: string; cover?: string; artistName?: string }
-  | { type: "playlist"; uuid: string; title: string; image?: string; creatorName?: string }
-  | { type: "mix"; mixId: string; title: string; image?: string; subtitle?: string }
+  | {
+      type: "album";
+      id: number;
+      title: string;
+      cover?: string;
+      artistName?: string;
+    }
+  | {
+      type: "playlist";
+      uuid: string;
+      title: string;
+      image?: string;
+      creatorName?: string;
+    }
+  | {
+      type: "mix";
+      mixId: string;
+      title: string;
+      image?: string;
+      subtitle?: string;
+    }
   | { type: "artist"; id: number; name: string; picture?: string };
 
 export interface FavoriteMix {

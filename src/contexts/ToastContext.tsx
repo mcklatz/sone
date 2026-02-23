@@ -44,7 +44,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, TOAST_DURATION);
     },
-    []
+    [],
   );
 
   const dismiss = useCallback((id: string) => {
@@ -87,7 +87,11 @@ function Toaster({
             )}
             {toast.type === "error" && (
               <div className="w-5 h-5 rounded-full bg-th-error/15 flex items-center justify-center">
-                <AlertCircle size={12} className="text-th-error" strokeWidth={3} />
+                <AlertCircle
+                  size={12}
+                  className="text-th-error"
+                  strokeWidth={3}
+                />
               </div>
             )}
             {toast.type === "info" && (

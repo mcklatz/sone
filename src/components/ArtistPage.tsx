@@ -1,4 +1,12 @@
-import { Play, Pause, User, X, Shuffle, UserPlus, UserCheck } from "lucide-react";
+import {
+  Play,
+  Pause,
+  User,
+  X,
+  Shuffle,
+  UserPlus,
+  UserCheck,
+} from "lucide-react";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useStore } from "jotai";
 import { isPlayingAtom, currentTrackAtom } from "../atoms/playback";
@@ -31,8 +39,6 @@ interface ArtistPageProps {
   onBack: () => void;
 }
 
-
-
 export default function ArtistPage({
   artistId,
   artistInfo,
@@ -41,12 +47,28 @@ export default function ArtistPage({
   const store = useStore();
   const { playTrack, setQueueTracks, pauseTrack, resumeTrack } =
     usePlaybackActions();
-  const { followedArtistIds, followArtist, unfollowArtist,
-    favoriteAlbumIds, addFavoriteAlbum, removeFavoriteAlbum,
-    favoritePlaylistUuids, addFavoritePlaylist, removeFavoritePlaylist,
-    favoriteMixIds, addFavoriteMix, removeFavoriteMix,
+  const {
+    followedArtistIds,
+    followArtist,
+    unfollowArtist,
+    favoriteAlbumIds,
+    addFavoriteAlbum,
+    removeFavoriteAlbum,
+    favoritePlaylistUuids,
+    addFavoritePlaylist,
+    removeFavoritePlaylist,
+    favoriteMixIds,
+    addFavoriteMix,
+    removeFavoriteMix,
   } = useFavorites();
-  const { navigateToAlbum, navigateToArtist, navigateToArtistTracks, navigateToPlaylist, navigateToMix, navigateToViewAll } = useNavigation();
+  const {
+    navigateToAlbum,
+    navigateToArtist,
+    navigateToArtistTracks,
+    navigateToPlaylist,
+    navigateToMix,
+    navigateToViewAll,
+  } = useNavigation();
   const isFollowed = followedArtistIds.has(artistId);
 
   const [pageData, setPageData] = useState<ArtistPageData | null>(null);
@@ -91,7 +113,9 @@ export default function ArtistPage({
     };
 
     loadArtist();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [artistId]);
 
   // Derived state from pageData
@@ -103,10 +127,14 @@ export default function ArtistPage({
 
   const trackIds = useMemo(
     () => new Set(topTracks.map((t: any) => t.id).filter(Boolean)),
-    [topTracks]
+    [topTracks],
   );
 
-  const handlePlayTrack = async (track: any, index: number, trackList: any[]) => {
+  const handlePlayTrack = async (
+    track: any,
+    index: number,
+    trackList: any[],
+  ) => {
     try {
       setQueueTracks(trackList.slice(index + 1));
       await playTrack(track);
@@ -157,7 +185,11 @@ export default function ArtistPage({
       if (isFollowed) {
         await unfollowArtist(artistId);
       } else {
-        await followArtist(artistId, { id: artistId, name: displayName, picture });
+        await followArtist(artistId, {
+          id: artistId,
+          name: displayName,
+          picture,
+        });
       }
     } catch (err) {
       console.error("Failed to toggle follow:", err);
@@ -207,10 +239,13 @@ export default function ArtistPage({
       }
 
       if (mediaItem) {
-        setContextMenu({ item: mediaItem, position: { x: e.clientX, y: e.clientY } });
+        setContextMenu({
+          item: mediaItem,
+          position: { x: e.clientX, y: e.clientY },
+        });
       }
     },
-    []
+    [],
   );
 
   const handleCardClick = useCallback(
@@ -245,7 +280,7 @@ export default function ArtistPage({
         }
       }
     },
-    [navigateToAlbum, navigateToArtist, navigateToPlaylist, navigateToMix]
+    [navigateToAlbum, navigateToArtist, navigateToPlaylist, navigateToMix],
   );
 
   const artistPlaying = (() => {
@@ -429,14 +464,27 @@ export default function ArtistPage({
           );
         }
 
-        if (["ALBUM_LIST", "ARTIST_LIST", "PLAYLIST_LIST", "MIX_LIST"].includes(section.type)) {
+        if (
+          ["ALBUM_LIST", "ARTIST_LIST", "PLAYLIST_LIST", "MIX_LIST"].includes(
+            section.type,
+          )
+        ) {
           return (
             <CardScrollSection
               key={sectionIdx}
               section={section}
               onCardClick={handleCardClick}
               onContextMenu={handleCardContextMenu}
-              onViewAll={section.apiPath ? () => navigateToViewAll(section.title, section.apiPath!, artistId) : undefined}
+              onViewAll={
+                section.apiPath
+                  ? () =>
+                      navigateToViewAll(
+                        section.title,
+                        section.apiPath!,
+                        artistId,
+                      )
+                  : undefined
+              }
               favoriteAlbumIds={favoriteAlbumIds}
               addFavoriteAlbum={addFavoriteAlbum}
               removeFavoriteAlbum={removeFavoriteAlbum}
@@ -502,14 +550,18 @@ function TrackSection({
   onViewAll: () => void;
 }) {
   const items = section.items || [];
-  const displayTracks = useMemo(() => items.slice(0, 10).map((t: any) => {
-    if (!t.artist && t.artists?.[0]) return { ...t, artist: t.artists[0] };
-    return t;
-  }), [items]);
+  const displayTracks = useMemo(
+    () =>
+      items.slice(0, 10).map((t: any) => {
+        if (!t.artist && t.artists?.[0]) return { ...t, artist: t.artists[0] };
+        return t;
+      }),
+    [items],
+  );
 
   const handlePlay = useCallback(
     (track: any, index: number) => onPlayTrack(track, index, items),
-    [onPlayTrack, items]
+    [onPlayTrack, items],
   );
 
   return (
@@ -540,4 +592,3 @@ function TrackSection({
     </div>
   );
 }
-

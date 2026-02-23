@@ -29,7 +29,11 @@ export function MediaGridSkeleton({ count = 18 }: { count?: number }) {
 }
 
 /** Empty state for the media grid. */
-export function MediaGridEmpty({ message = "No items found" }: { message?: string }) {
+export function MediaGridEmpty({
+  message = "No items found",
+}: {
+  message?: string;
+}) {
   return (
     <div className="text-center py-12">
       <p className="text-th-text-muted text-sm">{message}</p>

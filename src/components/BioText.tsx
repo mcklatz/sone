@@ -12,7 +12,11 @@ function parseSegments(text: string): BioSegment[] {
     if (match.index > last) {
       segments.push({ type: "text", text: text.slice(last, match.index) });
     }
-    segments.push({ type: "link", artistId: parseInt(match[1], 10), text: match[2] });
+    segments.push({
+      type: "link",
+      artistId: parseInt(match[1], 10),
+      text: match[2],
+    });
     last = re.lastIndex;
   }
 
@@ -22,8 +26,11 @@ function parseSegments(text: string): BioSegment[] {
 
   return segments.map((seg) =>
     seg.type === "text"
-      ? { ...seg, text: seg.text.replace(/\[[^\]]*\]/g, "").replace(/<[^>]*>/g, "") }
-      : seg
+      ? {
+          ...seg,
+          text: seg.text.replace(/\[[^\]]*\]/g, "").replace(/<[^>]*>/g, ""),
+        }
+      : seg,
   );
 }
 
@@ -50,7 +57,11 @@ interface BioTextProps {
   className?: string;
 }
 
-export default function BioText({ bio, onArtistClick, className = "text-white/80" }: BioTextProps) {
+export default function BioText({
+  bio,
+  onArtistClick,
+  className = "text-white/80",
+}: BioTextProps) {
   const paragraphs = parseBio(bio);
 
   return (
@@ -71,7 +82,7 @@ export default function BioText({ bio, onArtistClick, className = "text-white/80
               </button>
             ) : (
               <span key={si}>{seg.text}</span>
-            )
+            ),
           )}
         </p>
       ))}

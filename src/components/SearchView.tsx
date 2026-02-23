@@ -1,10 +1,4 @@
-import {
-  Play,
-  Music,
-  Search,
-  User,
-  MoreHorizontal,
-} from "lucide-react";
+import { Play, Music, Search, User, MoreHorizontal } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePlaybackActions } from "../hooks/usePlaybackActions";
 import { useMediaPlay } from "../hooks/useMediaPlay";
@@ -52,15 +46,16 @@ interface SearchViewProps {
 export default function SearchView({ query, onBack }: SearchViewProps) {
   const { playTrack, setQueueTracks } = usePlaybackActions();
   const playMedia = useMediaPlay();
-  const {
-    navigateToAlbum,
-    navigateToPlaylist,
-    navigateToArtist,
-  } = useNavigation();
+  const { navigateToAlbum, navigateToPlaylist, navigateToArtist } =
+    useNavigation();
 
   const {
-    favoriteAlbumIds, addFavoriteAlbum, removeFavoriteAlbum,
-    favoritePlaylistUuids, addFavoritePlaylist, removeFavoritePlaylist,
+    favoriteAlbumIds,
+    addFavoriteAlbum,
+    removeFavoriteAlbum,
+    favoritePlaylistUuids,
+    addFavoritePlaylist,
+    removeFavoritePlaylist,
   } = useFavorites();
 
   const [results, setResults] = useState<SearchResults | null>(null);
@@ -89,7 +84,7 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
         position: { x: e.clientX, y: e.clientY },
       });
     },
-    []
+    [],
   );
 
   const handlePlaylistContextMenu = useCallback(
@@ -108,11 +103,14 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
         position: { x: e.clientX, y: e.clientY },
       });
     },
-    []
+    [],
   );
 
   const handleArtistContextMenu = useCallback(
-    (e: React.MouseEvent, artist: { id: number; name: string; picture?: string }) => {
+    (
+      e: React.MouseEvent,
+      artist: { id: number; name: string; picture?: string },
+    ) => {
       e.preventDefault();
       e.stopPropagation();
       setContextMenu({
@@ -125,7 +123,7 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
         position: { x: e.clientX, y: e.clientY },
       });
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -262,19 +260,34 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
                         <MediaCard
                           key={pl.uuid}
                           item={pl}
-                          onClick={() => navigateToPlaylist(pl.uuid, {
-                            title: pl.title,
-                            image: pl.image,
-                            description: pl.description,
-                            creatorName: pl.creator?.name || (pl.creator?.id === 0 ? "TIDAL" : undefined),
-                            numberOfTracks: pl.numberOfTracks,
-                          })}
-                          onContextMenu={(e) => handlePlaylistContextMenu(e, pl)}
-                          onPlay={(e) => { e.stopPropagation(); playMedia({ type: "playlist", uuid: pl.uuid, title: pl.title, image: pl.image }); }}
+                          onClick={() =>
+                            navigateToPlaylist(pl.uuid, {
+                              title: pl.title,
+                              image: pl.image,
+                              description: pl.description,
+                              creatorName:
+                                pl.creator?.name ||
+                                (pl.creator?.id === 0 ? "TIDAL" : undefined),
+                              numberOfTracks: pl.numberOfTracks,
+                            })
+                          }
+                          onContextMenu={(e) =>
+                            handlePlaylistContextMenu(e, pl)
+                          }
+                          onPlay={(e) => {
+                            e.stopPropagation();
+                            playMedia({
+                              type: "playlist",
+                              uuid: pl.uuid,
+                              title: pl.title,
+                              image: pl.image,
+                            });
+                          }}
                           isFavorited={favoritePlaylistUuids.has(pl.uuid)}
                           onFavoriteToggle={(e) => {
                             e.stopPropagation();
-                            if (favoritePlaylistUuids.has(pl.uuid)) removeFavoritePlaylist(pl.uuid);
+                            if (favoritePlaylistUuids.has(pl.uuid))
+                              removeFavoritePlaylist(pl.uuid);
                             else addFavoritePlaylist(pl.uuid, pl);
                           }}
                         />
@@ -300,17 +313,30 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
                         <MediaCard
                           key={album.id}
                           item={album}
-                          onClick={() => navigateToAlbum(album.id, {
-                            title: album.title,
-                            cover: album.cover,
-                            artistName: album.artist?.name,
-                          })}
-                          onContextMenu={(e) => handleAlbumContextMenu(e, album)}
-                          onPlay={(e) => { e.stopPropagation(); playMedia({ type: "album", id: album.id, title: album.title, cover: album.cover }); }}
+                          onClick={() =>
+                            navigateToAlbum(album.id, {
+                              title: album.title,
+                              cover: album.cover,
+                              artistName: album.artist?.name,
+                            })
+                          }
+                          onContextMenu={(e) =>
+                            handleAlbumContextMenu(e, album)
+                          }
+                          onPlay={(e) => {
+                            e.stopPropagation();
+                            playMedia({
+                              type: "album",
+                              id: album.id,
+                              title: album.title,
+                              cover: album.cover,
+                            });
+                          }}
                           isFavorited={favoriteAlbumIds.has(album.id)}
                           onFavoriteToggle={(e) => {
                             e.stopPropagation();
-                            if (favoriteAlbumIds.has(album.id)) removeFavoriteAlbum(album.id);
+                            if (favoriteAlbumIds.has(album.id))
+                              removeFavoriteAlbum(album.id);
                             else addFavoriteAlbum(album.id, album);
                           }}
                         />
@@ -336,12 +362,24 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
                         <MediaCard
                           key={artist.id}
                           item={artist}
-                          onClick={() => navigateToArtist(artist.id, {
-                            name: artist.name,
-                            picture: artist.picture,
-                          })}
-                          onContextMenu={(e) => handleArtistContextMenu(e, artist)}
-                          onPlay={(e) => { e.stopPropagation(); playMedia({ type: "artist", id: artist.id, name: artist.name, picture: artist.picture }); }}
+                          onClick={() =>
+                            navigateToArtist(artist.id, {
+                              name: artist.name,
+                              picture: artist.picture,
+                            })
+                          }
+                          onContextMenu={(e) =>
+                            handleArtistContextMenu(e, artist)
+                          }
+                          onPlay={(e) => {
+                            e.stopPropagation();
+                            playMedia({
+                              type: "artist",
+                              id: artist.id,
+                              name: artist.name,
+                              picture: artist.picture,
+                            });
+                          }}
                           isArtist
                         />
                       ))}
@@ -421,19 +459,32 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
                   <MediaCard
                     key={pl.uuid}
                     item={pl}
-                    onClick={() => navigateToPlaylist(pl.uuid, {
-                      title: pl.title,
-                      image: pl.image,
-                      description: pl.description,
-                      creatorName: pl.creator?.name || (pl.creator?.id === 0 ? "TIDAL" : undefined),
-                      numberOfTracks: pl.numberOfTracks,
-                    })}
+                    onClick={() =>
+                      navigateToPlaylist(pl.uuid, {
+                        title: pl.title,
+                        image: pl.image,
+                        description: pl.description,
+                        creatorName:
+                          pl.creator?.name ||
+                          (pl.creator?.id === 0 ? "TIDAL" : undefined),
+                        numberOfTracks: pl.numberOfTracks,
+                      })
+                    }
                     onContextMenu={(e) => handlePlaylistContextMenu(e, pl)}
-                    onPlay={(e) => { e.stopPropagation(); playMedia({ type: "playlist", uuid: pl.uuid, title: pl.title, image: pl.image }); }}
+                    onPlay={(e) => {
+                      e.stopPropagation();
+                      playMedia({
+                        type: "playlist",
+                        uuid: pl.uuid,
+                        title: pl.title,
+                        image: pl.image,
+                      });
+                    }}
                     isFavorited={favoritePlaylistUuids.has(pl.uuid)}
                     onFavoriteToggle={(e) => {
                       e.stopPropagation();
-                      if (favoritePlaylistUuids.has(pl.uuid)) removeFavoritePlaylist(pl.uuid);
+                      if (favoritePlaylistUuids.has(pl.uuid))
+                        removeFavoritePlaylist(pl.uuid);
                       else addFavoritePlaylist(pl.uuid, pl);
                     }}
                   />
@@ -448,17 +499,28 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
                   <MediaCard
                     key={album.id}
                     item={album}
-                    onClick={() => navigateToAlbum(album.id, {
-                      title: album.title,
-                      cover: album.cover,
-                      artistName: album.artist?.name,
-                    })}
+                    onClick={() =>
+                      navigateToAlbum(album.id, {
+                        title: album.title,
+                        cover: album.cover,
+                        artistName: album.artist?.name,
+                      })
+                    }
                     onContextMenu={(e) => handleAlbumContextMenu(e, album)}
-                    onPlay={(e) => { e.stopPropagation(); playMedia({ type: "album", id: album.id, title: album.title, cover: album.cover }); }}
+                    onPlay={(e) => {
+                      e.stopPropagation();
+                      playMedia({
+                        type: "album",
+                        id: album.id,
+                        title: album.title,
+                        cover: album.cover,
+                      });
+                    }}
                     isFavorited={favoriteAlbumIds.has(album.id)}
                     onFavoriteToggle={(e) => {
                       e.stopPropagation();
-                      if (favoriteAlbumIds.has(album.id)) removeFavoriteAlbum(album.id);
+                      if (favoriteAlbumIds.has(album.id))
+                        removeFavoriteAlbum(album.id);
                       else addFavoriteAlbum(album.id, album);
                     }}
                   />
@@ -473,12 +535,22 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
                   <MediaCard
                     key={artist.id}
                     item={artist}
-                    onClick={() => navigateToArtist(artist.id, {
-                      name: artist.name,
-                      picture: artist.picture,
-                    })}
+                    onClick={() =>
+                      navigateToArtist(artist.id, {
+                        name: artist.name,
+                        picture: artist.picture,
+                      })
+                    }
                     onContextMenu={(e) => handleArtistContextMenu(e, artist)}
-                    onPlay={(e) => { e.stopPropagation(); playMedia({ type: "artist", id: artist.id, name: artist.name, picture: artist.picture }); }}
+                    onPlay={(e) => {
+                      e.stopPropagation();
+                      playMedia({
+                        type: "artist",
+                        id: artist.id,
+                        name: artist.name,
+                        picture: artist.picture,
+                      });
+                    }}
                     isArtist
                   />
                 ))}
@@ -502,7 +574,6 @@ export default function SearchView({ query, onBack }: SearchViewProps) {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-
 function TopHitsList({
   topHits,
   onPlayTrack,
@@ -516,11 +587,19 @@ function TopHitsList({
   onAlbumClick: (hit: DirectHitItem) => void;
   onArtistClick: (hit: DirectHitItem) => void;
   onPlaylistClick: (hit: DirectHitItem) => void;
-  onMediaContextMenu: (item: MediaItemType, position: { x: number; y: number }) => void;
+  onMediaContextMenu: (
+    item: MediaItemType,
+    position: { x: number; y: number },
+  ) => void;
 }) {
   // Track context menu state (managed locally)
-  const [ctxTrack, setCtxTrack] = useState<{ track: Track; index: number } | null>(null);
-  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [ctxTrack, setCtxTrack] = useState<{
+    track: Track;
+    index: number;
+  } | null>(null);
+  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | undefined>(
+    undefined,
+  );
   const dotsRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
   if (topHits.length === 0) {
@@ -538,7 +617,9 @@ function TopHitsList({
     title: hit.title || "",
     duration: hit.duration || 0,
     artist: hit.artistName ? { id: 0, name: hit.artistName } : undefined,
-    album: hit.albumId ? { id: hit.albumId, title: hit.albumTitle || "", cover: hit.albumCover } : undefined,
+    album: hit.albumId
+      ? { id: hit.albumId, title: hit.albumTitle || "", cover: hit.albumCover }
+      : undefined,
   });
 
   return (
@@ -568,7 +649,11 @@ function TopHitsList({
                     className="w-full h-full"
                   />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/track:opacity-100 transition-opacity">
-                    <Play size={16} fill="white" className="text-white ml-0.5" />
+                    <Play
+                      size={16}
+                      fill="white"
+                      className="text-white ml-0.5"
+                    />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0 text-left">
@@ -588,7 +673,11 @@ function TopHitsList({
                 onClick={(e) => {
                   e.stopPropagation();
                   setCtxPos(undefined);
-                  setCtxTrack((prev) => (prev?.track.id === trackObj.id ? null : { track: trackObj, index: idx }));
+                  setCtxTrack((prev) =>
+                    prev?.track.id === trackObj.id
+                      ? null
+                      : { track: trackObj, index: idx },
+                  );
                 }}
               >
                 <MoreHorizontal size={16} />
@@ -597,7 +686,9 @@ function TopHitsList({
                 <TrackContextMenu
                   track={trackObj}
                   index={ctxTrack.index}
-                  anchorRef={{ current: dotsRefs.current.get(trackObj.id) ?? null }}
+                  anchorRef={{
+                    current: dotsRefs.current.get(trackObj.id) ?? null,
+                  }}
                   cursorPosition={ctxPos}
                   onClose={() => setCtxTrack(null)}
                 />
@@ -616,7 +707,13 @@ function TopHitsList({
                 e.preventDefault();
                 e.stopPropagation();
                 onMediaContextMenu(
-                  { type: "album", id: hit.id, title: hit.title || "", cover: hit.cover, artistName: hit.artistName },
+                  {
+                    type: "album",
+                    id: hit.id,
+                    title: hit.title || "",
+                    cover: hit.cover,
+                    artistName: hit.artistName,
+                  },
                   { x: e.clientX, y: e.clientY },
                 );
               }}
@@ -642,7 +739,13 @@ function TopHitsList({
                   e.stopPropagation();
                   if (!hit.id) return;
                   onMediaContextMenu(
-                    { type: "album", id: hit.id, title: hit.title || "", cover: hit.cover, artistName: hit.artistName },
+                    {
+                      type: "album",
+                      id: hit.id,
+                      title: hit.title || "",
+                      cover: hit.cover,
+                      artistName: hit.artistName,
+                    },
                     { x: e.clientX, y: e.clientY },
                   );
                 }}
@@ -663,7 +766,12 @@ function TopHitsList({
                 e.preventDefault();
                 e.stopPropagation();
                 onMediaContextMenu(
-                  { type: "artist", id: hit.id, name: hit.name || "", picture: hit.picture },
+                  {
+                    type: "artist",
+                    id: hit.id,
+                    name: hit.name || "",
+                    picture: hit.picture,
+                  },
                   { x: e.clientX, y: e.clientY },
                 );
               }}
@@ -694,7 +802,12 @@ function TopHitsList({
                   e.stopPropagation();
                   if (!hit.id) return;
                   onMediaContextMenu(
-                    { type: "artist", id: hit.id, name: hit.name || "", picture: hit.picture },
+                    {
+                      type: "artist",
+                      id: hit.id,
+                      name: hit.name || "",
+                      picture: hit.picture,
+                    },
                     { x: e.clientX, y: e.clientY },
                   );
                 }}
@@ -715,7 +828,12 @@ function TopHitsList({
                 e.preventDefault();
                 e.stopPropagation();
                 onMediaContextMenu(
-                  { type: "playlist", uuid: hit.uuid, title: hit.title || "", image: hit.image },
+                  {
+                    type: "playlist",
+                    uuid: hit.uuid,
+                    title: hit.title || "",
+                    image: hit.image,
+                  },
                   { x: e.clientX, y: e.clientY },
                 );
               }}
@@ -748,7 +866,12 @@ function TopHitsList({
                   e.stopPropagation();
                   if (!hit.uuid) return;
                   onMediaContextMenu(
-                    { type: "playlist", uuid: hit.uuid, title: hit.title || "", image: hit.image },
+                    {
+                      type: "playlist",
+                      uuid: hit.uuid,
+                      title: hit.title || "",
+                      image: hit.image,
+                    },
                     { x: e.clientX, y: e.clientY },
                   );
                 }}
@@ -763,4 +886,3 @@ function TopHitsList({
     </div>
   );
 }
-

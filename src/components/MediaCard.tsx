@@ -76,17 +76,21 @@ export default function MediaCard({
             {isArtist ? (
               /* Artist: dark overlay on hover + centered play button */
               <>
-              <div className="absolute inset-0 rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onPlay) onPlay(e);
-                  else onClick();
-                }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
-              >
-                <Play size={28} fill="white" className="text-white ml-0.5 transition-transform duration-200 hover:scale-110" />
-              </button>
+                <div className="absolute inset-0 rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onPlay) onPlay(e);
+                    else onClick();
+                  }}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
+                >
+                  <Play
+                    size={28}
+                    fill="white"
+                    className="text-white ml-0.5 transition-transform duration-200 hover:scale-110"
+                  />
+                </button>
               </>
             ) : (
               <>

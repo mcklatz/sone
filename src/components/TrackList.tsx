@@ -45,8 +45,12 @@ function formatDate(dateString?: string): string {
   if (diffDays <= 7) return "This week";
   if (diffDays <= 14) return "Last week";
   if (diffDays <= 30) return "Last month";
-  
-  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ─── Memoized TrackRow ─────────────────────────────────────────────────────
@@ -92,7 +96,9 @@ const TrackRow = memo(function TrackRow({
 
   const [playlistMenuOpen, setPlaylistMenuOpen] = useState(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
-  const [contextMenuCursorPos, setContextMenuCursorPos] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [contextMenuCursorPos, setContextMenuCursorPos] = useState<
+    { x: number; y: number } | undefined
+  >(undefined);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
   const dotsButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -148,8 +154,14 @@ const TrackRow = memo(function TrackRow({
         {playing ? (
           <div className="flex items-end gap-[3px] h-4">
             <span className="w-[3px] h-full bg-th-accent rounded-full playing-bar" />
-            <span className="w-[3px] h-full bg-th-accent rounded-full playing-bar" style={{ animationDelay: "0.2s" }} />
-            <span className="w-[3px] h-full bg-th-accent rounded-full playing-bar" style={{ animationDelay: "0.4s" }} />
+            <span
+              className="w-[3px] h-full bg-th-accent rounded-full playing-bar"
+              style={{ animationDelay: "0.2s" }}
+            />
+            <span
+              className="w-[3px] h-full bg-th-accent rounded-full playing-bar"
+              style={{ animationDelay: "0.4s" }}
+            />
           </div>
         ) : (
           <>
@@ -158,7 +170,11 @@ const TrackRow = memo(function TrackRow({
                 isActive ? "text-th-accent" : "text-th-text-muted"
               }`}
             >
-              {displayNumber != null ? displayNumber : context === "album" ? (track.trackNumber ?? index + 1) : index + 1}
+              {displayNumber != null
+                ? displayNumber
+                : context === "album"
+                  ? (track.trackNumber ?? index + 1)
+                  : index + 1}
             </span>
             <Play
               size={14}
@@ -189,20 +205,20 @@ const TrackRow = memo(function TrackRow({
             {track.title}
           </span>
           {!showArtist && (
-             <span
-               className="text-[13px] text-th-text-muted truncate leading-snug hover:text-white hover:underline transition-colors cursor-pointer"
-               onClick={(e) => {
-                 e.stopPropagation();
-                 if (track.artist?.id) {
-                   navigateToArtist(track.artist.id, {
-                     name: track.artist.name,
-                     picture: track.artist.picture,
-                   });
-                 }
-               }}
-             >
-               {track.artist?.name || "Unknown Artist"}
-             </span>
+            <span
+              className="text-[13px] text-th-text-muted truncate leading-snug hover:text-white hover:underline transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (track.artist?.id) {
+                  navigateToArtist(track.artist.id, {
+                    name: track.artist.name,
+                    picture: track.artist.picture,
+                  });
+                }
+              }}
+            >
+              {track.artist?.name || "Unknown Artist"}
+            </span>
           )}
         </div>
       </div>
@@ -307,8 +323,8 @@ const TrackRow = memo(function TrackRow({
             onClose={() => setPlaylistMenuOpen(false)}
           />
         )}
-        <button 
-          className={`p-1.5 rounded-full transition-colors ${isFav ? 'text-th-accent' : 'text-th-text-muted hover:text-white'}`}
+        <button
+          className={`p-1.5 rounded-full transition-colors ${isFav ? "text-th-accent" : "text-th-text-muted hover:text-white"}`}
           title={isFav ? "Remove from favorites" : "Add to favorites"}
           onClick={toggleFavorite}
         >
@@ -356,7 +372,7 @@ export default memo(function TrackList({
           onLoadMore();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (sentinelRef.current) {
@@ -368,13 +384,13 @@ export default memo(function TrackList({
 
   // Build grid columns string
   const gridCols = [
-    "36px",                        // #
-    showCover ? "minmax(200px, 4fr)" : "minmax(200px, 4fr)",  // Title (with or without cover)
+    "36px", // #
+    showCover ? "minmax(200px, 4fr)" : "minmax(200px, 4fr)", // Title (with or without cover)
     ...(showArtist ? ["minmax(120px, 2fr)"] : []),
     ...(showAlbum ? ["minmax(120px, 2fr)"] : []),
     ...(showDateAdded ? ["minmax(100px, 1fr)"] : []),
-    "72px",                        // Time
-    "100px",                       // Actions (always present for + and heart)
+    "72px", // Time
+    "100px", // Actions (always present for + and heart)
   ].join(" ");
 
   return (

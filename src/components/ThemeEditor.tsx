@@ -15,8 +15,8 @@ export default function ThemeEditor({ open, onClose }: ThemeEditorProps) {
   const [localBg, setLocalBg] = useState(theme.bgBase);
   const [activePreset, setActivePreset] = useState<string | null>(
     PRESET_THEMES.find(
-      (p) => p.accent === theme.accent && p.bgBase === theme.bgBase
-    )?.name ?? null
+      (p) => p.accent === theme.accent && p.bgBase === theme.bgBase,
+    )?.name ?? null,
   );
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -26,8 +26,8 @@ export default function ThemeEditor({ open, onClose }: ThemeEditorProps) {
     setLocalBg(theme.bgBase);
     setActivePreset(
       PRESET_THEMES.find(
-        (p) => p.accent === theme.accent && p.bgBase === theme.bgBase
-      )?.name ?? null
+        (p) => p.accent === theme.accent && p.bgBase === theme.bgBase,
+      )?.name ?? null,
     );
   }, [theme]);
 
@@ -36,7 +36,7 @@ export default function ThemeEditor({ open, onClose }: ThemeEditorProps) {
     (accent: string, bgBase: string) => {
       setTheme({ name: "Custom", accent, bgBase });
     },
-    [setTheme]
+    [setTheme],
   );
 
   // Close on click outside
@@ -273,7 +273,10 @@ export default function ThemeEditor({ open, onClose }: ThemeEditorProps) {
                     <div className="flex flex-col gap-1 justify-center">
                       <div
                         className="w-20 h-2 rounded"
-                        style={{ backgroundColor: derived.textPrimary, opacity: 0.8 }}
+                        style={{
+                          backgroundColor: derived.textPrimary,
+                          opacity: 0.8,
+                        }}
                       />
                       <div
                         className="w-14 h-1.5 rounded"
@@ -313,7 +316,10 @@ export default function ThemeEditor({ open, onClose }: ThemeEditorProps) {
                   style={{ backgroundColor: derived.bgSurfaceHover }}
                 />
                 <div className="flex-1">
-                  <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: derived.bgInset }}>
+                  <div
+                    className="h-1 rounded-full overflow-hidden"
+                    style={{ backgroundColor: derived.bgInset }}
+                  >
                     <div
                       className="h-full rounded-full w-2/3"
                       style={{ backgroundColor: derived.accent }}

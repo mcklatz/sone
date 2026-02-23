@@ -44,7 +44,12 @@ export default function TrackRadioPage({
       } catch (err: any) {
         if (!cancelled) {
           console.error("Failed to load track radio:", err);
-          const msg = typeof err === "string" ? err : typeof err?.message === "string" ? err.message : "Failed to load track radio";
+          const msg =
+            typeof err === "string"
+              ? err
+              : typeof err?.message === "string"
+                ? err.message
+                : "Failed to load track radio";
           setError(msg);
         }
       } finally {
@@ -63,7 +68,7 @@ export default function TrackRadioPage({
 
   const trackIds = useMemo(
     () => new Set(tracks.map((track) => track.id)),
-    [tracks]
+    [tracks],
   );
 
   const handlePlayTrack = async (track: Track, index: number) => {
@@ -161,7 +166,8 @@ export default function TrackRadioPage({
           </h1>
           {displayArtist && (
             <p className="text-[14px] text-th-text-muted mt-1">
-              Based on <span className="text-white">{displayArtist}</span> — {trackInfo?.title}
+              Based on <span className="text-white">{displayArtist}</span> —{" "}
+              {trackInfo?.title}
             </p>
           )}
           <div className="flex items-center gap-1.5 text-[14px] text-th-text-muted mt-2">

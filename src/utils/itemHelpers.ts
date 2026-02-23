@@ -54,7 +54,7 @@ export function getItemImage(item: any, size: number = 320): string {
   if (item.imagePath)
     return `https://resources.tidal.com/images/${item.imagePath.replace(
       /-/g,
-      "/"
+      "/",
     )}/${size}x${size}.jpg`;
   return "";
 }
@@ -97,7 +97,11 @@ export function getItemSubtitle(item: any, userId?: number): string {
 
 export function getItemId(item: any): string {
   return (
-    item.id?.toString() || item.uuid || item.mixId || item.apiPath || Math.random().toString(36)
+    item.id?.toString() ||
+    item.uuid ||
+    item.mixId ||
+    item.apiPath ||
+    Math.random().toString(36)
   );
 }
 
@@ -137,7 +141,10 @@ export function isMixItem(item: any, sectionType?: string): boolean {
 }
 
 /** Convert a raw API item into a typed MediaItemType for playback/context menu use. */
-export function buildMediaItem(item: any, sectionType?: string): MediaItemType | null {
+export function buildMediaItem(
+  item: any,
+  sectionType?: string,
+): MediaItemType | null {
   if (isMixItem(item, sectionType)) {
     const mixId = item.mixId || item.id?.toString();
     if (mixId) {

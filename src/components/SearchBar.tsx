@@ -1,16 +1,15 @@
-import {
-  Search,
-  X,
-  Loader2,
-  MoreHorizontal,
-  Clock,
-  Play,
-} from "lucide-react";
+import { Search, X, Loader2, MoreHorizontal, Clock, Play } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { usePlaybackActions } from "../hooks/usePlaybackActions";
 import { useNavigation } from "../hooks/useNavigation";
 import { getSuggestions } from "../api/tidal";
-import { getTidalImageUrl, type DirectHitItem, type SuggestionTextItem, type Track, type MediaItemType } from "../types";
+import {
+  getTidalImageUrl,
+  type DirectHitItem,
+  type SuggestionTextItem,
+  type Track,
+  type MediaItemType,
+} from "../types";
 import TidalImage from "./TidalImage";
 import TrackContextMenu from "./TrackContextMenu";
 import MediaContextMenu from "./MediaContextMenu";
@@ -23,7 +22,10 @@ function loadHistory(): string[] {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.filter((s) => typeof s === "string").slice(0, MAX_HISTORY);
+      if (Array.isArray(parsed))
+        return parsed
+          .filter((s) => typeof s === "string")
+          .slice(0, MAX_HISTORY);
     }
   } catch {}
   return [];
@@ -31,7 +33,10 @@ function loadHistory(): string[] {
 
 function saveHistory(history: string[]) {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify(history.slice(0, MAX_HISTORY)),
+    );
   } catch {}
 }
 
@@ -47,18 +52,24 @@ export default function SearchBar() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [textSuggestions, setTextSuggestions] = useState<SuggestionTextItem[]>([]);
+  const [textSuggestions, setTextSuggestions] = useState<SuggestionTextItem[]>(
+    [],
+  );
   const [directHits, setDirectHits] = useState<DirectHitItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>(loadHistory);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   // Track context menu state
   const [ctxTrack, setCtxTrack] = useState<Track | null>(null);
   const [ctxTrackIndex, setCtxTrackIndex] = useState(0);
-  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [ctxPos, setCtxPos] = useState<{ x: number; y: number } | undefined>(
+    undefined,
+  );
   const dotsRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
   // Media context menu state (albums, playlists, artists)
@@ -100,14 +111,16 @@ export default function SearchBar() {
           });
       }, 300); // Increased debounce to 300ms
     },
-    [getSuggestions]
+    [getSuggestions],
   );
 
   const addToHistory = useCallback((query: string) => {
     const trimmed = query.trim();
     if (!trimmed) return;
     setSearchHistory((prev) => {
-      const filtered = prev.filter((h) => h.toLowerCase() !== trimmed.toLowerCase());
+      const filtered = prev.filter(
+        (h) => h.toLowerCase() !== trimmed.toLowerCase(),
+      );
       const next = [trimmed, ...filtered].slice(0, MAX_HISTORY);
       saveHistory(next);
       return next;
@@ -182,15 +195,19 @@ export default function SearchBar() {
     ? searchHistory.filter(
         (h) =>
           h.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
-          h.toLowerCase() !== searchQuery.trim().toLowerCase()
+          h.toLowerCase() !== searchQuery.trim().toLowerCase(),
       )
     : searchHistory;
 
   // When we have server-side suggestions, don't show local history (server returns its own history)
-  const showLocalHistory = searchOpen && !searchQuery.trim() && matchingHistory.length > 0;
-  const showTextSuggestions = searchOpen && searchQuery.trim() && hasTextSuggestions;
-  const showDirectHits = searchOpen && searchQuery.trim() && (searching || hasDirectHits);
-  const showDropdown = showLocalHistory || showTextSuggestions || showDirectHits;
+  const showLocalHistory =
+    searchOpen && !searchQuery.trim() && matchingHistory.length > 0;
+  const showTextSuggestions =
+    searchOpen && searchQuery.trim() && hasTextSuggestions;
+  const showDirectHits =
+    searchOpen && searchQuery.trim() && (searching || hasDirectHits);
+  const showDropdown =
+    showLocalHistory || showTextSuggestions || showDirectHits;
 
   return (
     <div className="relative max-w-[360px] w-64 lg:w-80">
@@ -284,7 +301,9 @@ export default function SearchBar() {
                   ) : (
                     <Search size={15} className="text-th-text-faint shrink-0" />
                   )}
-                  <span className="text-[13px] text-white truncate">{s.query}</span>
+                  <span className="text-[13px] text-white truncate">
+                    {s.query}
+                  </span>
                   {s.source === "history" && (
                     <button
                       onClick={(e) => {
@@ -330,17 +349,23 @@ export default function SearchBar() {
                           className="flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left group/item cursor-pointer"
                           onClick={() => {
                             setSearchOpen(false);
-                            if (hit.id) navigateToArtist(hit.id, {
-                              name: hit.name || "",
-                              picture: hit.picture,
-                            });
+                            if (hit.id)
+                              navigateToArtist(hit.id, {
+                                name: hit.name || "",
+                                picture: hit.picture,
+                              });
                           }}
                           onContextMenu={(e) => {
                             if (!hit.id) return;
                             e.preventDefault();
                             e.stopPropagation();
                             setMediaCtx({
-                              item: { type: "artist", id: hit.id, name: hit.name || "", picture: hit.picture },
+                              item: {
+                                type: "artist",
+                                id: hit.id,
+                                name: hit.name || "",
+                                picture: hit.picture,
+                              },
                               position: { x: e.clientX, y: e.clientY },
                             });
                           }}
@@ -364,7 +389,9 @@ export default function SearchBar() {
                             <p className="text-[14px] text-white truncate font-medium">
                               {hit.name}
                             </p>
-                            <p className="text-[11px] text-th-text-faint">Artist</p>
+                            <p className="text-[11px] text-th-text-faint">
+                              Artist
+                            </p>
                           </div>
                           <button
                             className="p-1 rounded-full text-th-text-faint hover:text-white opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0"
@@ -373,7 +400,12 @@ export default function SearchBar() {
                               e.stopPropagation();
                               if (!hit.id) return;
                               setMediaCtx({
-                                item: { type: "artist", id: hit.id, name: hit.name || "", picture: hit.picture },
+                                item: {
+                                  type: "artist",
+                                  id: hit.id,
+                                  name: hit.name || "",
+                                  picture: hit.picture,
+                                },
                                 position: { x: e.clientX, y: e.clientY },
                               });
                             }}
@@ -390,18 +422,25 @@ export default function SearchBar() {
                           className="flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left group/item cursor-pointer"
                           onClick={() => {
                             setSearchOpen(false);
-                            if (hit.id) navigateToAlbum(hit.id, {
-                              title: hit.title || "",
-                              cover: hit.cover,
-                              artistName: hit.artistName,
-                            });
+                            if (hit.id)
+                              navigateToAlbum(hit.id, {
+                                title: hit.title || "",
+                                cover: hit.cover,
+                                artistName: hit.artistName,
+                              });
                           }}
                           onContextMenu={(e) => {
                             if (!hit.id) return;
                             e.preventDefault();
                             e.stopPropagation();
                             setMediaCtx({
-                              item: { type: "album", id: hit.id, title: hit.title || "", cover: hit.cover, artistName: hit.artistName },
+                              item: {
+                                type: "album",
+                                id: hit.id,
+                                title: hit.title || "",
+                                cover: hit.cover,
+                                artistName: hit.artistName,
+                              },
                               position: { x: e.clientX, y: e.clientY },
                             });
                           }}
@@ -428,7 +467,13 @@ export default function SearchBar() {
                               e.stopPropagation();
                               if (!hit.id) return;
                               setMediaCtx({
-                                item: { type: "album", id: hit.id, title: hit.title || "", cover: hit.cover, artistName: hit.artistName },
+                                item: {
+                                  type: "album",
+                                  id: hit.id,
+                                  title: hit.title || "",
+                                  cover: hit.cover,
+                                  artistName: hit.artistName,
+                                },
                                 position: { x: e.clientX, y: e.clientY },
                               });
                             }}
@@ -444,8 +489,16 @@ export default function SearchBar() {
                         id: hit.id || 0,
                         title: hit.title || "",
                         duration: hit.duration || 0,
-                        artist: hit.artistName ? { id: 0, name: hit.artistName } : undefined,
-                        album: hit.albumId ? { id: hit.albumId, title: hit.albumTitle || "", cover: hit.albumCover } : undefined,
+                        artist: hit.artistName
+                          ? { id: 0, name: hit.artistName }
+                          : undefined,
+                        album: hit.albumId
+                          ? {
+                              id: hit.albumId,
+                              title: hit.albumTitle || "",
+                              cover: hit.albumCover,
+                            }
+                          : undefined,
                       };
                       return (
                         <div
@@ -474,7 +527,11 @@ export default function SearchBar() {
                                 className="w-full h-full"
                               />
                               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/track:opacity-100 transition-opacity">
-                                <Play size={16} fill="white" className="text-white ml-0.5" />
+                                <Play
+                                  size={16}
+                                  fill="white"
+                                  className="text-white ml-0.5"
+                                />
                               </div>
                             </div>
                             <div className="flex-1 min-w-0 text-left">
@@ -482,7 +539,8 @@ export default function SearchBar() {
                                 {hit.title}
                               </p>
                               <p className="text-[11px] text-th-text-faint truncate">
-                                Track &middot; {hit.artistName || "Unknown Artist"}
+                                Track &middot;{" "}
+                                {hit.artistName || "Unknown Artist"}
                               </p>
                             </div>
                           </button>
@@ -497,7 +555,9 @@ export default function SearchBar() {
                               e.stopPropagation();
                               setCtxPos(undefined);
                               setCtxTrackIndex(idx);
-                              setCtxTrack((prev) => (prev?.id === trackObj.id ? null : trackObj));
+                              setCtxTrack((prev) =>
+                                prev?.id === trackObj.id ? null : trackObj,
+                              );
                             }}
                           >
                             <MoreHorizontal size={16} />
@@ -506,7 +566,10 @@ export default function SearchBar() {
                             <TrackContextMenu
                               track={trackObj}
                               index={ctxTrackIndex}
-                              anchorRef={{ current: dotsRefs.current.get(trackObj.id) ?? null }}
+                              anchorRef={{
+                                current:
+                                  dotsRefs.current.get(trackObj.id) ?? null,
+                              }}
                               cursorPosition={ctxPos}
                               onClose={() => setCtxTrack(null)}
                             />
@@ -521,17 +584,23 @@ export default function SearchBar() {
                           className="flex items-center gap-3 px-3 py-3 hover:bg-th-border-subtle transition-colors text-left group/item cursor-pointer"
                           onClick={() => {
                             setSearchOpen(false);
-                            if (hit.uuid) navigateToPlaylist(hit.uuid, {
-                              title: hit.title || "",
-                              image: hit.image,
-                            });
+                            if (hit.uuid)
+                              navigateToPlaylist(hit.uuid, {
+                                title: hit.title || "",
+                                image: hit.image,
+                              });
                           }}
                           onContextMenu={(e) => {
                             if (!hit.uuid) return;
                             e.preventDefault();
                             e.stopPropagation();
                             setMediaCtx({
-                              item: { type: "playlist", uuid: hit.uuid, title: hit.title || "", image: hit.image },
+                              item: {
+                                type: "playlist",
+                                uuid: hit.uuid,
+                                title: hit.title || "",
+                                image: hit.image,
+                              },
                               position: { x: e.clientX, y: e.clientY },
                             });
                           }}
@@ -548,7 +617,10 @@ export default function SearchBar() {
                               {hit.title}
                             </p>
                             <p className="text-[11px] text-th-text-faint truncate">
-                              Playlist{hit.numberOfTracks ? ` · ${hit.numberOfTracks} tracks` : ""}
+                              Playlist
+                              {hit.numberOfTracks
+                                ? ` · ${hit.numberOfTracks} tracks`
+                                : ""}
                             </p>
                           </div>
                           <button
@@ -558,7 +630,12 @@ export default function SearchBar() {
                               e.stopPropagation();
                               if (!hit.uuid) return;
                               setMediaCtx({
-                                item: { type: "playlist", uuid: hit.uuid, title: hit.title || "", image: hit.image },
+                                item: {
+                                  type: "playlist",
+                                  uuid: hit.uuid,
+                                  title: hit.title || "",
+                                  image: hit.image,
+                                },
                                 position: { x: e.clientX, y: e.clientY },
                               });
                             }}

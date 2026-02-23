@@ -140,7 +140,7 @@ export default function Login() {
           const tokens = await pollDeviceAuth(
             deviceCodeRef.current,
             clientId.trim(),
-            clientSecret.trim()
+            clientSecret.trim(),
           );
           if (tokens) {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -222,7 +222,7 @@ export default function Login() {
         pkceRef.current.codeVerifier,
         pkceRef.current.clientUniqueKey,
         clientId.trim(),
-        clientSecret.trim()
+        clientSecret.trim(),
       );
       setStatus("Loading your library...");
       if (tokens.user_id) await getUserPlaylists(tokens.user_id);
@@ -265,13 +265,13 @@ export default function Login() {
 
       if (!parsedClientId) {
         setImportError(
-          "Could not find a Client ID. Make sure you pasted the cURL command."
+          "Could not find a Client ID. Make sure you pasted the cURL command.",
         );
         return;
       }
       if (!parsedRefreshToken && !parsedAccessToken) {
         setImportError(
-          "No session tokens found. Make sure you pasted the Response body (JSON) from the token request."
+          "No session tokens found. Make sure you pasted the Response body (JSON) from the token request.",
         );
         return;
       }
@@ -284,7 +284,7 @@ export default function Login() {
         parsedClientId,
         parsedClientSecret || "",
         parsedRefreshToken || "",
-        parsedAccessToken
+        parsedAccessToken,
       );
 
       setStatus("Loading your library...");
@@ -886,11 +886,14 @@ export default function Login() {
                   native Tidal application
                 </span>{" "}
                 (such as the Android or desktop client). Credentials from the
-                Tidal Developer Portal (<span className="text-th-text-faint font-mono text-[12px]">developer.tidal.com</span>){" "}
+                Tidal Developer Portal (
+                <span className="text-th-text-faint font-mono text-[12px]">
+                  developer.tidal.com
+                </span>
+                ){" "}
                 <span className="text-red-400 font-medium">will not work</span>{" "}
-                — those are for Tidal's public catalog API, which is a
-                different system that does not support authentication or
-                streaming.
+                — those are for Tidal's public catalog API, which is a different
+                system that does not support authentication or streaming.
               </p>
 
               <p>

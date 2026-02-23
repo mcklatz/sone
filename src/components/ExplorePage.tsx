@@ -88,12 +88,12 @@ export default function ExplorePage() {
 
   // Split sections: titled pill sections vs icon shortcut section at the bottom
   const pillSections = sections.filter(
-    (s) => hasItems(s) && s.title && s.sectionType === "PAGE_LINKS_CLOUD"
+    (s) => hasItems(s) && s.title && s.sectionType === "PAGE_LINKS_CLOUD",
   );
 
   // console.log("pillSections", pillSections);
   const iconSection = sections.find(
-    (s) => hasItems(s) && s.sectionType === "PAGE_LINKS"
+    (s) => hasItems(s) && s.sectionType === "PAGE_LINKS",
   );
   console.log("iconSection", iconSection);
 

@@ -1,11 +1,7 @@
 import { Play, Heart } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigation } from "../hooks/useNavigation";
-import {
-  getHomePage,
-  refreshHomePage,
-  getHomePageMore,
-} from "../api/tidal";
+import { getHomePage, refreshHomePage, getHomePageMore } from "../api/tidal";
 import {
   type HomeSection as HomeSectionType,
   type MediaItemType,
@@ -35,12 +31,16 @@ export default function Home() {
     navigateToMix,
   } = useNavigation();
 
-  const [sections, setSections] = useState<HomeSectionType[]>(cachedHomeData?.sections || []);
+  const [sections, setSections] = useState<HomeSectionType[]>(
+    cachedHomeData?.sections || [],
+  );
   // If we have cached data, don't show loading skeleton
   const [loading, setLoading] = useState(!cachedHomeData);
   const [greeting, setGreeting] = useState("Good evening");
   const hasLoadedRef = useRef(false);
-  const [cursor, setCursor] = useState<string | null>(cachedHomeData?.cursor ?? null);
+  const [cursor, setCursor] = useState<string | null>(
+    cachedHomeData?.cursor ?? null,
+  );
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const hasPaginatedRef = useRef(false);
@@ -60,30 +60,50 @@ export default function Home() {
       if (isMixItem(item, "SHORTCUT_LIST")) {
         const mixId = item.mixId || item.id?.toString();
         if (mixId) {
-          mediaItem = { type: "mix", mixId, title: getItemTitle(item), image: getItemImage(item) };
+          mediaItem = {
+            type: "mix",
+            mixId,
+            title: getItemTitle(item),
+            image: getItemImage(item),
+          };
         }
       } else if (isArtistItem(item, "SHORTCUT_LIST")) {
         if (item.id) {
-          mediaItem = { type: "artist", id: item.id, name: item.name || getItemTitle(item), picture: item.picture };
+          mediaItem = {
+            type: "artist",
+            id: item.id,
+            name: item.name || getItemTitle(item),
+            picture: item.picture,
+          };
         }
       } else if (item.uuid) {
         mediaItem = {
-          type: "playlist", uuid: item.uuid, title: item.title || getItemTitle(item),
+          type: "playlist",
+          uuid: item.uuid,
+          title: item.title || getItemTitle(item),
           image: item.squareImage || item.image,
-          creatorName: item.creator?.name || (item.creator?.id === 0 ? "TIDAL" : undefined),
+          creatorName:
+            item.creator?.name ||
+            (item.creator?.id === 0 ? "TIDAL" : undefined),
         };
       } else if (item.id) {
         mediaItem = {
-          type: "album", id: item.id, title: item.title || getItemTitle(item),
-          cover: item.cover, artistName: item.artist?.name || item.artists?.[0]?.name,
+          type: "album",
+          id: item.id,
+          title: item.title || getItemTitle(item),
+          cover: item.cover,
+          artistName: item.artist?.name || item.artists?.[0]?.name,
         };
       }
 
       if (mediaItem) {
-        setContextMenu({ item: mediaItem, position: { x: e.clientX, y: e.clientY } });
+        setContextMenu({
+          item: mediaItem,
+          position: { x: e.clientX, y: e.clientY },
+        });
       }
     },
-    []
+    [],
   );
 
   const handleShortcutClick = useCallback(
@@ -91,27 +111,37 @@ export default function Home() {
       if (isMixItem(item, "SHORTCUT_LIST")) {
         const mixId = item.mixId || item.id?.toString();
         if (mixId) {
-          navigateToMix(mixId, { title: getItemTitle(item), image: getItemImage(item) });
+          navigateToMix(mixId, {
+            title: getItemTitle(item),
+            image: getItemImage(item),
+          });
         }
       } else if (isArtistItem(item, "SHORTCUT_LIST")) {
         if (item.id) {
-          navigateToArtist(item.id, { name: item.name || getItemTitle(item), picture: item.picture });
+          navigateToArtist(item.id, {
+            name: item.name || getItemTitle(item),
+            picture: item.picture,
+          });
         }
       } else if (item.uuid) {
         navigateToPlaylist(item.uuid, {
-          title: item.title, image: item.squareImage || item.image,
+          title: item.title,
+          image: item.squareImage || item.image,
           description: item.description,
-          creatorName: item.creator?.name || (item.creator?.id === 0 ? "TIDAL" : undefined),
+          creatorName:
+            item.creator?.name ||
+            (item.creator?.id === 0 ? "TIDAL" : undefined),
           numberOfTracks: item.numberOfTracks,
         });
       } else if (item.id) {
         navigateToAlbum(item.id, {
-          title: item.title, cover: item.cover,
+          title: item.title,
+          cover: item.cover,
           artistName: item.artist?.name || item.artists?.[0]?.name,
         });
       }
     },
-    [navigateToPlaylist, navigateToAlbum, navigateToArtist, navigateToMix]
+    [navigateToPlaylist, navigateToAlbum, navigateToArtist, navigateToMix],
   );
 
   useEffect(() => {
@@ -131,8 +161,12 @@ export default function Home() {
         const result = await getHomePage();
         console.log(
           "[Home] Loaded sections:",
-          result.home.sections.map((s) => `${s.sectionType}: "${s.title}" (${Array.isArray(s.items) ? s.items.length : 0} items)`),
-          "isStale:", result.isStale
+          result.home.sections.map(
+            (s) =>
+              `${s.sectionType}: "${s.title}" (${Array.isArray(s.items) ? s.items.length : 0} items)`,
+          ),
+          "isStale:",
+          result.isStale,
         );
         setSections(result.home.sections);
         setCursor(result.home.cursor ?? null);
@@ -205,7 +239,7 @@ export default function Home() {
             });
         }
       },
-      { rootMargin: "200px" }
+      { rootMargin: "200px" },
     );
 
     observer.observe(sentinel);
@@ -213,17 +247,31 @@ export default function Home() {
   }, [cursor, loadingMore]);
 
   // Extract SHORTCUT_LIST section for the quick-access grid, pass the rest to HomeSection
-  const shortcutSection = sections.find((s) => s.sectionType === "SHORTCUT_LIST");
+  const shortcutSection = sections.find(
+    (s) => s.sectionType === "SHORTCUT_LIST",
+  );
   const shortcutItems = shortcutSection
-    ? (Array.isArray(shortcutSection.items) ? shortcutSection.items : [])
-        .filter((item: any) => getItemTitle(item) !== "My Tracks")
+    ? (Array.isArray(shortcutSection.items)
+        ? shortcutSection.items
+        : []
+      ).filter((item: any) => getItemTitle(item) !== "My Tracks")
     : [];
-  const contentSections = sections.filter((s) => s.sectionType !== "SHORTCUT_LIST");
+  const contentSections = sections.filter(
+    (s) => s.sectionType !== "SHORTCUT_LIST",
+  );
 
   if (shortcutSection) {
-    console.log("[Home] SHORTCUT_LIST:", shortcutItems.length, "items", shortcutItems.slice(0, 2));
+    console.log(
+      "[Home] SHORTCUT_LIST:",
+      shortcutItems.length,
+      "items",
+      shortcutItems.slice(0, 2),
+    );
   } else {
-    console.log("[Home] No SHORTCUT_LIST section found. Types:", sections.map((s) => s.sectionType));
+    console.log(
+      "[Home] No SHORTCUT_LIST section found. Types:",
+      sections.map((s) => s.sectionType),
+    );
   }
 
   if (loading) {
@@ -235,7 +283,10 @@ export default function Home() {
           {/* Skeleton quick access */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-10">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-[56px] bg-th-surface-hover/40 rounded-[4px] animate-pulse" />
+              <div
+                key={i}
+                className="h-[56px] bg-th-surface-hover/40 rounded-[4px] animate-pulse"
+              />
             ))}
           </div>
           {/* Skeleton sections */}
@@ -303,7 +354,11 @@ export default function Home() {
                     <div className="w-full h-full bg-th-surface-hover" />
                   )}
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Play size={18} fill="white" className="text-white ml-0.5" />
+                    <Play
+                      size={18}
+                      fill="white"
+                      className="text-white ml-0.5"
+                    />
                   </div>
                 </div>
                 <div className="flex-1 flex items-center px-3 min-w-0">

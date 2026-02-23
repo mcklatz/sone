@@ -39,7 +39,8 @@ export default function TrackContextMenu({
   onTrackRemoved,
 }: TrackContextMenuProps) {
   const { addToQueue, playNextInQueue } = usePlaybackActions();
-  const { favoriteTrackIds, addFavoriteTrack, removeFavoriteTrack } = useFavorites();
+  const { favoriteTrackIds, addFavoriteTrack, removeFavoriteTrack } =
+    useFavorites();
   const { navigateToTrackRadio } = useNavigation();
   const { removeTrackFromPlaylist } = usePlaylists();
   const { showToast } = useToast();
@@ -143,7 +144,8 @@ export default function TrackContextMenu({
   }, [onClose, anchorRef, showPlaylistSubmenu]);
 
   const trackTitle = track.title || (track as any).name || "";
-  const trackLabel = trackTitle.length > 30 ? trackTitle.slice(0, 28) + "…" : trackTitle;
+  const trackLabel =
+    trackTitle.length > 30 ? trackTitle.slice(0, 28) + "…" : trackTitle;
 
   const handlePlayNext = useCallback(() => {
     playNextInQueue(track);
@@ -171,7 +173,15 @@ export default function TrackContextMenu({
       showToast("Failed to update Loved tracks", "error");
     }
     onClose();
-  }, [track, trackLabel, isFav, addFavoriteTrack, removeFavoriteTrack, showToast, onClose]);
+  }, [
+    track,
+    trackLabel,
+    isFav,
+    addFavoriteTrack,
+    removeFavoriteTrack,
+    showToast,
+    onClose,
+  ]);
 
   const handleGoToTrackRadio = useCallback(() => {
     navigateToTrackRadio(track.id, {
@@ -193,7 +203,15 @@ export default function TrackContextMenu({
       showToast("Failed to remove track", "error");
     }
     onClose();
-  }, [playlistId, index, trackLabel, removeTrackFromPlaylist, onTrackRemoved, showToast, onClose]);
+  }, [
+    playlistId,
+    index,
+    trackLabel,
+    removeTrackFromPlaylist,
+    onTrackRemoved,
+    showToast,
+    onClose,
+  ]);
 
   const menuItemClass =
     "w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.04] transition-colors text-left text-[14px] text-th-text-secondary hover:text-white";
@@ -243,7 +261,9 @@ export default function TrackContextMenu({
             className={`shrink-0 ${isFav ? "text-th-accent" : "text-th-text-muted"}`}
             fill={isFav ? "currentColor" : "none"}
           />
-          <span>{isFav ? "Remove from Loved tracks" : "Add to Loved tracks"}</span>
+          <span>
+            {isFav ? "Remove from Loved tracks" : "Add to Loved tracks"}
+          </span>
         </button>
 
         {/* Go to track radio (hidden if mixes is populated but TRACK_MIX is absent) */}

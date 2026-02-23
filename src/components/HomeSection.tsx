@@ -1,5 +1,11 @@
 import { useRef, useState, useCallback } from "react";
-import { Play, ChevronLeft, ChevronRight, Music, MoreHorizontal } from "lucide-react";
+import {
+  Play,
+  ChevronLeft,
+  ChevronRight,
+  Music,
+  MoreHorizontal,
+} from "lucide-react";
 import { usePlaybackActions } from "../hooks/usePlaybackActions";
 import { useMediaPlay } from "../hooks/useMediaPlay";
 import { useNavigation } from "../hooks/useNavigation";
@@ -37,10 +43,18 @@ export default function HomeSection({ section }: HomeSectionProps) {
     navigateToMix,
   } = useNavigation();
   const {
-    favoriteAlbumIds, addFavoriteAlbum, removeFavoriteAlbum,
-    favoritePlaylistUuids, addFavoritePlaylist, removeFavoritePlaylist,
-    followedArtistIds, followArtist, unfollowArtist,
-    favoriteMixIds, addFavoriteMix, removeFavoriteMix,
+    favoriteAlbumIds,
+    addFavoriteAlbum,
+    removeFavoriteAlbum,
+    favoritePlaylistUuids,
+    addFavoritePlaylist,
+    removeFavoritePlaylist,
+    followedArtistIds,
+    followArtist,
+    unfollowArtist,
+    favoriteMixIds,
+    addFavoriteMix,
+    removeFavoriteMix,
   } = useFavorites();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -64,7 +78,7 @@ export default function HomeSection({ section }: HomeSectionProps) {
         });
       }
     },
-    [section.sectionType]
+    [section.sectionType],
   );
 
   const items = Array.isArray(section.items) ? section.items : [];
@@ -136,8 +150,9 @@ export default function HomeSection({ section }: HomeSectionProps) {
   };
 
   const isTrackSection = section.sectionType === "TRACK_LIST";
-  const isCompactGrid = section.sectionType === "COMPACT_GRID_CARD"
-    || section.title === "Recently played";
+  const isCompactGrid =
+    section.sectionType === "COMPACT_GRID_CARD" ||
+    section.title === "Recently played";
 
   if (isTrackSection) {
     return <TrackListSection section={section} items={items} />;
@@ -206,7 +221,8 @@ export default function HomeSection({ section }: HomeSectionProps) {
           const isMix = isMixItem(item, section.sectionType);
           const isTrack = isTrackItem(item, section.sectionType);
           const isPlaylist = !isArtist && !isMix && !isTrack && !!item.uuid;
-          const isAlbum = !isArtist && !isMix && !isTrack && !item.uuid && item.id;
+          const isAlbum =
+            !isArtist && !isMix && !isTrack && !item.uuid && item.id;
 
           let isFavorited: boolean | undefined;
           let onFavoriteToggle: ((e: React.MouseEvent) => void) | undefined;
@@ -228,7 +244,11 @@ export default function HomeSection({ section }: HomeSectionProps) {
               if (followedArtistIds.has(item.id)) {
                 unfollowArtist(item.id);
               } else {
-                followArtist(item.id, { id: item.id, name: item.name, picture: item.picture });
+                followArtist(item.id, {
+                  id: item.id,
+                  name: item.name,
+                  picture: item.picture,
+                });
               }
             };
           } else if (isPlaylist && item.uuid) {
@@ -264,7 +284,14 @@ export default function HomeSection({ section }: HomeSectionProps) {
               item={item}
               onClick={() => handleItemClick(item)}
               onContextMenu={(e) => handleContextMenu(e, item)}
-              onPlay={mediaItem ? (e) => { e.stopPropagation(); playMedia(mediaItem); } : undefined}
+              onPlay={
+                mediaItem
+                  ? (e) => {
+                      e.stopPropagation();
+                      playMedia(mediaItem);
+                    }
+                  : undefined
+              }
               isArtist={isArtist}
               isFavorited={isFavorited}
               onFavoriteToggle={onFavoriteToggle}
@@ -295,7 +322,8 @@ function TrackListSection({
   items: any[];
 }) {
   const { playTrack, setQueueTracks } = usePlaybackActions();
-  const { navigateToAlbum, navigateToArtist, navigateToViewAll } = useNavigation();
+  const { navigateToAlbum, navigateToArtist, navigateToViewAll } =
+    useNavigation();
   const [trackContextMenu, setTrackContextMenu] = useState<{
     track: any;
     index: number;
@@ -358,11 +386,7 @@ function TrackListSection({
                 </div>
               )}
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <Play
-                  size={14}
-                  fill="white"
-                  className="text-white ml-0.5"
-                />
+                <Play size={14} fill="white" className="text-white ml-0.5" />
               </div>
             </div>
             <div className="flex-1 min-w-0">
@@ -391,7 +415,8 @@ function TrackListSection({
                     onClick={(e) => {
                       e.stopPropagation();
                       const artistId = item.artist?.id || item.artists?.[0]?.id;
-                      const artistName = item.artist?.name || item.artists?.[0]?.name;
+                      const artistName =
+                        item.artist?.name || item.artists?.[0]?.name;
                       if (artistId) {
                         navigateToArtist(artistId, { name: artistName });
                       }
@@ -440,7 +465,8 @@ function CompactGridSection({
   items: any[];
   onItemClick: (item: any) => void;
 }) {
-  const { navigateToViewAll, navigateToAlbum, navigateToArtist } = useNavigation();
+  const { navigateToViewAll, navigateToAlbum, navigateToArtist } =
+    useNavigation();
   const displayItems = items.slice(0, 16);
 
   // Track context menu (for track items)
@@ -513,7 +539,7 @@ function CompactGridSection({
         setMediaContextMenu({ item: mediaItem, position });
       }
     },
-    [section.sectionType]
+    [section.sectionType],
   );
 
   return (
@@ -583,8 +609,10 @@ function CompactGridSection({
                       className="hover:underline cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
-                        const artistId = item.artist?.id || item.artists?.[0]?.id;
-                        const artistName = item.artist?.name || item.artists?.[0]?.name;
+                        const artistId =
+                          item.artist?.id || item.artists?.[0]?.id;
+                        const artistName =
+                          item.artist?.name || item.artists?.[0]?.name;
                         if (artistId) {
                           navigateToArtist(artistId, { name: artistName });
                         }

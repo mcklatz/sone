@@ -1,12 +1,29 @@
 import { useCallback } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { invoke } from "@tauri-apps/api/core";
-import { isAuthenticatedAtom, authTokensAtom, userNameAtom } from "../atoms/auth";
+import {
+  isAuthenticatedAtom,
+  authTokensAtom,
+  userNameAtom,
+} from "../atoms/auth";
 import { userPlaylistsAtom, favoritePlaylistsAtom } from "../atoms/playlists";
-import { isPlayingAtom, currentTrackAtom, queueAtom, historyAtom } from "../atoms/playback";
+import {
+  isPlayingAtom,
+  currentTrackAtom,
+  queueAtom,
+  historyAtom,
+} from "../atoms/playback";
 import { favoriteTrackIdsAtom } from "../atoms/favorites";
-import { clearCache, getUserPlaylists as fetchUserPlaylists } from "../api/tidal";
-import type { AuthTokens, PkceAuthParams, DeviceAuthResponse, Playlist } from "../types";
+import {
+  clearCache,
+  getUserPlaylists as fetchUserPlaylists,
+} from "../api/tidal";
+import type {
+  AuthTokens,
+  PkceAuthParams,
+  DeviceAuthResponse,
+  Playlist,
+} from "../types";
 
 const PLAYBACK_STATE_KEY = "sone.playback-state.v1";
 const VOLUME_STATE_KEY = "sone.volume.v1";
@@ -33,7 +50,7 @@ export function useAuth() {
       clientId: string,
       clientSecret: string,
       refreshToken: string,
-      accessToken?: string
+      accessToken?: string,
     ): Promise<AuthTokens> => {
       try {
         const tokens = await invoke<AuthTokens>("import_session", {
@@ -59,13 +76,13 @@ export function useAuth() {
         throw error;
       }
     },
-    [setAuthTokens, setIsAuthenticated]
+    [setAuthTokens, setIsAuthenticated],
   );
 
   const startDeviceAuth = useCallback(
     async (
       clientId: string,
-      clientSecret: string
+      clientSecret: string,
     ): Promise<DeviceAuthResponse> => {
       try {
         return await invoke<DeviceAuthResponse>("start_device_auth", {
@@ -77,14 +94,14 @@ export function useAuth() {
         throw error;
       }
     },
-    []
+    [],
   );
 
   const pollDeviceAuth = useCallback(
     async (
       deviceCode: string,
       clientId: string,
-      clientSecret: string
+      clientSecret: string,
     ): Promise<AuthTokens | null> => {
       try {
         const result = await invoke<AuthTokens | null>("poll_device_auth", {
@@ -114,7 +131,7 @@ export function useAuth() {
         throw error;
       }
     },
-    [setAuthTokens, setIsAuthenticated]
+    [setAuthTokens, setIsAuthenticated],
   );
 
   const startPkceAuth = useCallback(
@@ -126,7 +143,7 @@ export function useAuth() {
         throw error;
       }
     },
-    []
+    [],
   );
 
   const completePkceAuth = useCallback(
@@ -135,7 +152,7 @@ export function useAuth() {
       codeVerifier: string,
       clientUniqueKey: string,
       clientId: string,
-      clientSecret: string
+      clientSecret: string,
     ): Promise<AuthTokens> => {
       try {
         const tokens = await invoke<AuthTokens>("complete_pkce_auth", {
@@ -164,7 +181,7 @@ export function useAuth() {
         throw error;
       }
     },
-    [setAuthTokens, setIsAuthenticated]
+    [setAuthTokens, setIsAuthenticated],
   );
 
   const logout = useCallback(async () => {
@@ -213,7 +230,7 @@ export function useAuth() {
         return [];
       }
     },
-    [setUserPlaylists]
+    [setUserPlaylists],
   );
 
   return {

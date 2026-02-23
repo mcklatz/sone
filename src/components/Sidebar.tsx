@@ -1,17 +1,20 @@
-import {
-  Home,
-  Compass,
-  Library,
-  Heart,
-  Music,
-  User,
-} from "lucide-react";
+import { Home, Compass, Library, Heart, Music, User } from "lucide-react";
 import { useInfiniteScroll } from "../hooks/useInfiniteScroll";
 import SidebarSkeleton from "./SidebarSkeleton";
-import { getUserPlaylists, getFavoriteAlbums, getFavoriteMixes, getFavoriteArtists } from "../api/tidal";
+import {
+  getUserPlaylists,
+  getFavoriteAlbums,
+  getFavoriteMixes,
+  getFavoriteArtists,
+} from "../api/tidal";
 import { useNavigation } from "../hooks/useNavigation";
 import { useAuth } from "../hooks/useAuth";
-import { getTidalImageUrl, type MediaItemType, type Playlist, type ArtistDetail } from "../types";
+import {
+  getTidalImageUrl,
+  type MediaItemType,
+  type Playlist,
+  type ArtistDetail,
+} from "../types";
 import TidalImage from "./TidalImage";
 import MediaContextMenu from "./MediaContextMenu";
 import { useState, useCallback, useMemo } from "react";
@@ -32,16 +35,21 @@ export default function Sidebar() {
   } = useNavigation();
   const { authTokens } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<"playlists" | "albums" | "artists" | "mixes">("playlists");
+  const [activeFilter, setActiveFilter] = useState<
+    "playlists" | "albums" | "artists" | "mixes"
+  >("playlists");
 
   // Playlists: paginate user playlists, merge in favorites from atom (loaded at boot)
   const userPlaylists = useAtomValue(userPlaylistsAtom);
   const favoritePlaylists = useAtomValue(favoritePlaylistsAtom);
 
-  const playlistFetch = useCallback(async (offset: number, limit: number) => {
-    if (!authTokens?.user_id) return { items: [], totalNumberOfItems: 0 };
-    return getUserPlaylists(authTokens.user_id, offset, limit);
-  }, [authTokens?.user_id]);
+  const playlistFetch = useCallback(
+    async (offset: number, limit: number) => {
+      if (!authTokens?.user_id) return { items: [], totalNumberOfItems: 0 };
+      return getUserPlaylists(authTokens.user_id, offset, limit);
+    },
+    [authTokens?.user_id],
+  );
 
   const {
     items: userPlaylistItems,
@@ -60,22 +68,34 @@ export default function Sidebar() {
     const seen = new Set<string>();
     const merged: Playlist[] = [];
     for (const p of userPlaylists) {
-      if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
+      if (!seen.has(p.uuid)) {
+        seen.add(p.uuid);
+        merged.push(p);
+      }
     }
     for (const p of userPlaylistItems) {
-      if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
+      if (!seen.has(p.uuid)) {
+        seen.add(p.uuid);
+        merged.push(p);
+      }
     }
     for (const p of favoritePlaylists) {
-      if (!seen.has(p.uuid)) { seen.add(p.uuid); merged.push(p); }
+      if (!seen.has(p.uuid)) {
+        seen.add(p.uuid);
+        merged.push(p);
+      }
     }
     return merged;
   }, [userPlaylists, userPlaylistItems, favoritePlaylists]);
 
   // Albums
-  const albumFetch = useCallback(async (offset: number, limit: number) => {
-    if (!authTokens?.user_id) return { items: [], totalNumberOfItems: 0 };
-    return getFavoriteAlbums(authTokens.user_id, offset, limit);
-  }, [authTokens?.user_id]);
+  const albumFetch = useCallback(
+    async (offset: number, limit: number) => {
+      if (!authTokens?.user_id) return { items: [], totalNumberOfItems: 0 };
+      return getFavoriteAlbums(authTokens.user_id, offset, limit);
+    },
+    [authTokens?.user_id],
+  );
 
   const {
     items: favoriteAlbumsList,
@@ -107,10 +127,14 @@ export default function Sidebar() {
   });
 
   // Artists
-  const artistFetch = useCallback(async (offset: number, limit: number) => {
-    if (!authTokens?.user_id) return { items: [] as ArtistDetail[], totalNumberOfItems: 0 };
-    return getFavoriteArtists(authTokens.user_id, offset, limit);
-  }, [authTokens?.user_id]);
+  const artistFetch = useCallback(
+    async (offset: number, limit: number) => {
+      if (!authTokens?.user_id)
+        return { items: [] as ArtistDetail[], totalNumberOfItems: 0 };
+      return getFavoriteArtists(authTokens.user_id, offset, limit);
+    },
+    [authTokens?.user_id],
+  );
 
   const {
     items: favoriteArtistsList,
@@ -140,12 +164,14 @@ export default function Sidebar() {
           uuid: playlist.uuid,
           title: playlist.title,
           image: playlist.image,
-          creatorName: playlist.creator?.name || (playlist.creator?.id === 0 ? "TIDAL" : undefined),
+          creatorName:
+            playlist.creator?.name ||
+            (playlist.creator?.id === 0 ? "TIDAL" : undefined),
         },
         position: { x: e.clientX, y: e.clientY },
       });
     },
-    []
+    [],
   );
 
   const userId = authTokens?.user_id;
@@ -242,19 +268,27 @@ export default function Sidebar() {
         {/* Filter Pills */}
         {!isCollapsed && (
           <div className="px-2 pb-2 flex gap-1.5 overflow-x-auto no-scrollbar">
-            {(["playlists", "albums", "artists", "mixes"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveFilter(tab)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors duration-150 ${
-                  activeFilter === tab
-                    ? "bg-th-accent/15 text-th-accent"
-                    : "bg-white/[0.07] hover:bg-th-inset text-th-text-secondary"
-                }`}
-              >
-                {tab === "playlists" ? "Playlists" : tab === "albums" ? "Albums" : tab === "artists" ? "Artists" : "Mixes"}
-              </button>
-            ))}
+            {(["playlists", "albums", "artists", "mixes"] as const).map(
+              (tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveFilter(tab)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors duration-150 ${
+                    activeFilter === tab
+                      ? "bg-th-accent/15 text-th-accent"
+                      : "bg-white/[0.07] hover:bg-th-inset text-th-text-secondary"
+                  }`}
+                >
+                  {tab === "playlists"
+                    ? "Playlists"
+                    : tab === "albums"
+                      ? "Albums"
+                      : tab === "artists"
+                        ? "Artists"
+                        : "Mixes"}
+                </button>
+              ),
+            )}
           </div>
         )}
 
@@ -329,7 +363,9 @@ export default function Sidebar() {
                     <button
                       key={playlist.uuid}
                       onClick={() => handlePlaylistClick(playlist)}
-                      onContextMenu={(e) => handlePlaylistContextMenu(e, playlist)}
+                      onContextMenu={(e) =>
+                        handlePlaylistContextMenu(e, playlist)
+                      }
                       className={`w-full flex items-center gap-2.5 px-1.5 py-2 rounded-md transition-colors duration-150 group ${
                         currentView.type === "playlist" &&
                         currentView.playlistId === playlist.uuid
@@ -372,8 +408,12 @@ export default function Sidebar() {
             albumsLoading ? (
               <SidebarSkeleton count={5} />
             ) : favoriteAlbumsList.length === 0 ? (
-              <div className={`px-3 py-8 text-center ${isCollapsed ? "hidden" : ""}`}>
-                <p className="text-th-text-muted text-sm">No favorite albums yet</p>
+              <div
+                className={`px-3 py-8 text-center ${isCollapsed ? "hidden" : ""}`}
+              >
+                <p className="text-th-text-muted text-sm">
+                  No favorite albums yet
+                </p>
               </div>
             ) : (
               <div className="space-y-px">
@@ -434,8 +474,12 @@ export default function Sidebar() {
             artistsLoading ? (
               <SidebarSkeleton count={5} />
             ) : favoriteArtistsList.length === 0 ? (
-              <div className={`px-3 py-8 text-center ${isCollapsed ? "hidden" : ""}`}>
-                <p className="text-th-text-muted text-sm">No followed artists yet</p>
+              <div
+                className={`px-3 py-8 text-center ${isCollapsed ? "hidden" : ""}`}
+              >
+                <p className="text-th-text-muted text-sm">
+                  No followed artists yet
+                </p>
               </div>
             ) : (
               <div className="space-y-px">
@@ -503,82 +547,83 @@ export default function Sidebar() {
                 {artistsLoadingMore && <SidebarSkeleton count={2} />}
               </div>
             )
+          ) : /* Mixes view */
+          mixesLoading ? (
+            <SidebarSkeleton count={5} />
+          ) : favoriteMixesList.length === 0 ? (
+            <div
+              className={`px-3 py-8 text-center ${isCollapsed ? "hidden" : ""}`}
+            >
+              <p className="text-th-text-muted text-sm">
+                No favorite mixes yet
+              </p>
+            </div>
           ) : (
-            /* Mixes view */
-            mixesLoading ? (
-              <SidebarSkeleton count={5} />
-            ) : favoriteMixesList.length === 0 ? (
-              <div className={`px-3 py-8 text-center ${isCollapsed ? "hidden" : ""}`}>
-                <p className="text-th-text-muted text-sm">No favorite mixes yet</p>
-              </div>
-            ) : (
-              <div className="space-y-px">
-                {favoriteMixesList.map((mix) => (
-                  <button
-                    key={mix.id}
-                    onClick={() =>
-                      navigateToMix(mix.id, {
+            <div className="space-y-px">
+              {favoriteMixesList.map((mix) => (
+                <button
+                  key={mix.id}
+                  onClick={() =>
+                    navigateToMix(mix.id, {
+                      title: mix.title,
+                      image: mix.images?.MEDIUM?.url,
+                      subtitle: mix.subTitle,
+                    })
+                  }
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setContextMenu({
+                      item: {
+                        type: "mix",
+                        mixId: mix.id,
                         title: mix.title,
                         image: mix.images?.MEDIUM?.url,
                         subtitle: mix.subTitle,
-                      })
-                    }
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setContextMenu({
-                        item: {
-                          type: "mix",
-                          mixId: mix.id,
-                          title: mix.title,
-                          image: mix.images?.MEDIUM?.url,
-                          subtitle: mix.subTitle,
-                        },
-                        position: { x: e.clientX, y: e.clientY },
-                      });
-                    }}
-                    className={`w-full flex items-center gap-2.5 px-1.5 py-2 rounded-md transition-colors duration-150 group ${
-                      currentView.type === "mix" &&
-                      currentView.mixId === mix.id
-                        ? "bg-white/[0.08]"
-                        : "hover:bg-th-border-subtle"
-                    } ${isCollapsed ? "justify-center" : ""}`}
-                    title={mix.title}
+                      },
+                      position: { x: e.clientX, y: e.clientY },
+                    });
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-1.5 py-2 rounded-md transition-colors duration-150 group ${
+                    currentView.type === "mix" && currentView.mixId === mix.id
+                      ? "bg-white/[0.08]"
+                      : "hover:bg-th-border-subtle"
+                  } ${isCollapsed ? "justify-center" : ""}`}
+                  title={mix.title}
+                >
+                  <div
+                    className={`bg-th-surface-hover shrink-0 overflow-hidden rounded ${
+                      isCollapsed ? "w-10 h-10" : "w-10 h-10"
+                    }`}
                   >
-                    <div
-                      className={`bg-th-surface-hover shrink-0 overflow-hidden rounded ${
-                        isCollapsed ? "w-10 h-10" : "w-10 h-10"
-                      }`}
-                    >
-                      {mix.images?.SMALL?.url ? (
-                        <img
-                          src={mix.images.SMALL.url}
-                          alt={mix.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Music size={16} className="text-gray-600" />
-                        </div>
-                      )}
-                    </div>
-
-                    {!isCollapsed && (
-                      <div className="flex-1 min-w-0 text-left">
-                        <div className="text-[14px] font-medium text-white truncate leading-snug">
-                          {mix.title}
-                        </div>
-                        <div className="text-[12px] text-th-text-faint truncate leading-snug mt-0.5">
-                          {mix.subTitle || "Mix"}
-                        </div>
+                    {mix.images?.SMALL?.url ? (
+                      <img
+                        src={mix.images.SMALL.url}
+                        alt={mix.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Music size={16} className="text-gray-600" />
                       </div>
                     )}
-                  </button>
-                ))}
-                {mixesHasMore && <div ref={mixesSentinelRef} />}
-                {mixesLoadingMore && <SidebarSkeleton count={2} />}
-              </div>
-            )
+                  </div>
+
+                  {!isCollapsed && (
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="text-[14px] font-medium text-white truncate leading-snug">
+                        {mix.title}
+                      </div>
+                      <div className="text-[12px] text-th-text-faint truncate leading-snug mt-0.5">
+                        {mix.subTitle || "Mix"}
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ))}
+              {mixesHasMore && <div ref={mixesSentinelRef} />}
+              {mixesLoadingMore && <SidebarSkeleton count={2} />}
+            </div>
           )}
         </div>
       </div>

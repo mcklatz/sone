@@ -59,12 +59,12 @@ function useZoom() {
       if (e.key === "+" || e.key === "=") {
         e.preventDefault();
         setZoom((z) =>
-          Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100)
+          Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100),
         );
       } else if (e.key === "-") {
         e.preventDefault();
         setZoom((z) =>
-          Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100)
+          Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100),
         );
       } else if (e.key === "0") {
         e.preventDefault();
@@ -117,7 +117,13 @@ function AppContent() {
       case "favorites":
         return <FavoritesView onBack={navigateHome} />;
       case "search":
-        return <SearchView key={currentView.query} query={currentView.query} onBack={navigateHome} />;
+        return (
+          <SearchView
+            key={currentView.query}
+            query={currentView.query}
+            onBack={navigateHome}
+          />
+        );
       case "viewAll":
         return (
           <ViewAllPage

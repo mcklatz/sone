@@ -3,10 +3,7 @@ import { useAtom } from "jotai";
 import { currentViewAtom } from "../atoms/navigation";
 import type { AppView } from "../types";
 
-function navigate(
-  setCurrentView: (view: AppView) => void,
-  view: AppView
-) {
+function navigate(setCurrentView: (view: AppView) => void, view: AppView) {
   window.history.pushState(view, "");
   // Wrap in startTransition so React can show the new page's skeleton
   // immediately without blocking on unmounting the old page's heavy DOM.
@@ -24,11 +21,11 @@ export function useNavigation() {
   const navigateToAlbum = useCallback(
     (
       albumId: number,
-      albumInfo?: { title: string; cover?: string; artistName?: string }
+      albumInfo?: { title: string; cover?: string; artistName?: string },
     ) => {
       navigate(setCurrentView, { type: "album", albumId, albumInfo });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToPlaylist = useCallback(
@@ -41,11 +38,11 @@ export function useNavigation() {
         creatorName?: string;
         numberOfTracks?: number;
         isUserPlaylist?: boolean;
-      }
+      },
     ) => {
       navigate(setCurrentView, { type: "playlist", playlistId, playlistInfo });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToFavorites = useCallback(() => {
@@ -60,51 +57,48 @@ export function useNavigation() {
     (query: string) => {
       navigate(setCurrentView, { type: "search", query });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToViewAll = useCallback(
     (title: string, apiPath: string, artistId?: number) => {
       navigate(setCurrentView, { type: "viewAll", title, apiPath, artistId });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToArtist = useCallback(
-    (
-      artistId: number,
-      artistInfo?: { name: string; picture?: string }
-    ) => {
+    (artistId: number, artistInfo?: { name: string; picture?: string }) => {
       navigate(setCurrentView, { type: "artist", artistId, artistInfo });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToMix = useCallback(
     (
       mixId: string,
-      mixInfo?: { title: string; image?: string; subtitle?: string }
+      mixInfo?: { title: string; image?: string; subtitle?: string },
     ) => {
       navigate(setCurrentView, { type: "mix", mixId, mixInfo });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToTrackRadio = useCallback(
     (
       trackId: number,
-      trackInfo?: { title: string; artistName?: string; cover?: string }
+      trackInfo?: { title: string; artistName?: string; cover?: string },
     ) => {
       navigate(setCurrentView, { type: "trackRadio", trackId, trackInfo });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToArtistTracks = useCallback(
     (artistId: number, artistName: string) => {
       navigate(setCurrentView, { type: "artistTracks", artistId, artistName });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToExplore = useCallback(() => {
@@ -115,14 +109,14 @@ export function useNavigation() {
     (apiPath: string, title: string) => {
       navigate(setCurrentView, { type: "explorePage", apiPath, title });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   const navigateToLibraryViewAll = useCallback(
     (libraryType: "playlists" | "albums" | "artists" | "mixes") => {
       navigate(setCurrentView, { type: "libraryViewAll", libraryType });
     },
-    [setCurrentView]
+    [setCurrentView],
   );
 
   return {

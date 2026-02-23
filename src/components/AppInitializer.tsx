@@ -20,7 +20,11 @@ import {
   authTokensAtom,
   userNameAtom,
 } from "../atoms/auth";
-import { userPlaylistsAtom, favoritePlaylistsAtom, deletedPlaylistIdsAtom } from "../atoms/playlists";
+import {
+  userPlaylistsAtom,
+  favoritePlaylistsAtom,
+  deletedPlaylistIdsAtom,
+} from "../atoms/playlists";
 import {
   favoriteTrackIdsAtom,
   favoriteAlbumIdsAtom,
@@ -89,7 +93,8 @@ export function AppInitializer() {
   // ---- Stable playback actions (no subscriptions) ----
   const { playNext, playPrevious, pauseTrack, resumeTrack, setVolume } =
     usePlaybackActions();
-  const { addFavoriteTrack, removeFavoriteTrack, favoriteTrackIds } = useFavorites();
+  const { addFavoriteTrack, removeFavoriteTrack, favoriteTrackIds } =
+    useFavorites();
   const setDrawerOpen = useSetAtom(drawerOpenAtom);
   const { showToast } = useToast();
 
@@ -141,9 +146,15 @@ export function AppInitializer() {
           .catch(() => {});
 
         // Exclusive mode settings (non-blocking, backend-authoritative)
-        invoke<boolean>("get_exclusive_mode").then((v) => store.set(exclusiveModeAtom, v)).catch(() => {});
-        invoke<boolean>("get_bit_perfect").then((v) => store.set(bitPerfectAtom, v)).catch(() => {});
-        invoke<string | null>("get_exclusive_device").then((v) => store.set(exclusiveDeviceAtom, v)).catch(() => {});
+        invoke<boolean>("get_exclusive_mode")
+          .then((v) => store.set(exclusiveModeAtom, v))
+          .catch(() => {});
+        invoke<boolean>("get_bit_perfect")
+          .then((v) => store.set(bitPerfectAtom, v))
+          .catch(() => {});
+        invoke<string | null>("get_exclusive_device")
+          .then((v) => store.set(exclusiveDeviceAtom, v))
+          .catch(() => {});
 
         // Playlists
         try {
@@ -160,17 +171,18 @@ export function AppInitializer() {
             try {
               const parsed = typeof err === "string" ? JSON.parse(err) : err;
               if (parsed?.kind === "NotAuthenticated") return true;
-              if (parsed?.kind === "Api" && parsed?.message?.status === 401) return true;
+              if (parsed?.kind === "Api" && parsed?.message?.status === 401)
+                return true;
             } catch {}
-            return String(err).includes("401") || String(err).includes("expired");
+            return (
+              String(err).includes("401") || String(err).includes("expired")
+            );
           };
 
           if (isAuthError(playlistErr)) {
             try {
               console.log("Token expired, attempting refresh...");
-              const refreshed = await invoke<AuthTokens>(
-                "refresh_tidal_auth"
-              );
+              const refreshed = await invoke<AuthTokens>("refresh_tidal_auth");
               activeTokens = {
                 ...refreshed,
                 user_id: userId ?? refreshed.user_id,
@@ -203,12 +215,16 @@ export function AppInitializer() {
             setFollowedArtistIds(new Set(ids.artists));
             setFavoritePlaylistUuids(new Set(ids.playlists));
           })
-          .catch((error) => console.error("Failed to load favorite IDs:", error));
+          .catch((error) =>
+            console.error("Failed to load favorite IDs:", error),
+          );
 
         // Mix IDs still separate (v2 endpoint, not in unified response)
         invoke<string[]>("get_favorite_mix_ids")
           .then((ids) => setFavoriteMixIds(new Set(ids)))
-          .catch((error) => console.error("Failed to load favorite mix IDs:", error));
+          .catch((error) =>
+            console.error("Failed to load favorite mix IDs:", error),
+          );
 
         // Preload home page (fire-and-forget)
         getHomePage().catch(() => {});
@@ -264,26 +280,23 @@ export function AppInitializer() {
     const restoreSnapshot = (raw: string) => {
       const parsed = JSON.parse(raw) as Partial<PlaybackSnapshot>;
 
-      if (
-        parsed.currentTrack &&
-        typeof parsed.currentTrack.id === "number"
-      ) {
+      if (parsed.currentTrack && typeof parsed.currentTrack.id === "number") {
         setCurrentTrack(parsed.currentTrack as Track);
       }
 
       if (Array.isArray(parsed.queue)) {
         setQueue(
           parsed.queue.filter(
-            (t): t is Track => !!t && typeof t.id === "number"
-          )
+            (t): t is Track => !!t && typeof t.id === "number",
+          ),
         );
       }
 
       if (Array.isArray(parsed.history)) {
         setHistory(
           parsed.history.filter(
-            (t): t is Track => !!t && typeof t.id === "number"
-          )
+            (t): t is Track => !!t && typeof t.id === "number",
+          ),
         );
       }
     };
@@ -330,7 +343,7 @@ export function AppInitializer() {
           backendTimer = null;
           latestJson = null;
           savePlaybackQueue(json).catch((err) =>
-            console.error("Failed to save playback queue to backend:", err)
+            console.error("Failed to save playback queue to backend:", err),
           );
         }, 2000);
       };
@@ -353,7 +366,7 @@ export function AppInitializer() {
       // Flush pending save on unmount
       if (latestJson) {
         savePlaybackQueue(latestJson).catch((err) =>
-          console.error("Failed to flush playback queue on unmount:", err)
+          console.error("Failed to flush playback queue on unmount:", err),
         );
       }
     };
@@ -380,7 +393,9 @@ export function AppInitializer() {
     const unlisten = listen("track-finished", () => {
       playNext();
     });
-    return () => { unlisten.then((fn) => fn()); };
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, [playNext]);
 
   // ================================================================
@@ -388,17 +403,28 @@ export function AppInitializer() {
   //  Async GStreamer bus errors (device busy, pipeline failures, etc.)
   // ================================================================
   useEffect(() => {
-    const unlisten = listen<{ kind: string; message?: string }>("audio-error", (event) => {
-      store.set(isPlayingAtom, false);
-      const { kind, message } = event.payload;
-      if (kind === "device_busy") {
-        showToast("Audio device is busy — close other apps using it", "error");
-      } else {
-        const display = message && message.length > 80 ? message.slice(0, 80) + "…" : (message || "Playback error");
-        showToast(display, "error");
-      }
-    });
-    return () => { unlisten.then((fn) => fn()); };
+    const unlisten = listen<{ kind: string; message?: string }>(
+      "audio-error",
+      (event) => {
+        store.set(isPlayingAtom, false);
+        const { kind, message } = event.payload;
+        if (kind === "device_busy") {
+          showToast(
+            "Audio device is busy — close other apps using it",
+            "error",
+          );
+        } else {
+          const display =
+            message && message.length > 80
+              ? message.slice(0, 80) + "…"
+              : message || "Playback error";
+          showToast(display, "error");
+        }
+      },
+    );
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, [store, showToast]);
 
   // ================================================================
@@ -444,7 +470,9 @@ export function AppInitializer() {
       const text = track
         ? `${track.title} — ${track.artist?.name || "Unknown"}`
         : "Sone";
-      invoke("update_tray_tooltip", { text }).then((r) => console.log("[tray tooltip]", text, "→", r)).catch((e) => console.error("[tray tooltip] invoke failed:", e));
+      invoke("update_tray_tooltip", { text })
+        .then((r) => console.log("[tray tooltip]", text, "→", r))
+        .catch((e) => console.error("[tray tooltip] invoke failed:", e));
     };
 
     // Set tooltip for already-restored track
@@ -480,7 +508,9 @@ export function AppInitializer() {
   useEffect(() => {
     const pushStatus = () => {
       const playing = store.get(isPlayingAtom);
-      invoke("update_mpris_playback_status", { isPlaying: playing }).catch(() => {});
+      invoke("update_mpris_playback_status", { isPlaying: playing }).catch(
+        () => {},
+      );
     };
 
     pushStatus();
@@ -607,7 +637,18 @@ export function AppInitializer() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [store, playNext, playPrevious, pauseTrack, resumeTrack, setVolume, setDrawerOpen, favoriteTrackIds, addFavoriteTrack, removeFavoriteTrack]);
+  }, [
+    store,
+    playNext,
+    playPrevious,
+    pauseTrack,
+    resumeTrack,
+    setVolume,
+    setDrawerOpen,
+    favoriteTrackIds,
+    addFavoriteTrack,
+    removeFavoriteTrack,
+  ]);
 
   // ================================================================
   //  BLOCK MIDDLE-CLICK PASTE (Linux/X11 primary selection)

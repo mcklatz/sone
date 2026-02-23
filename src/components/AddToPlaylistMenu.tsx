@@ -86,7 +86,16 @@ function CreatePlaylistModal({
       setError("Failed to create playlist");
       setSaving(false);
     }
-  }, [title, description, saving, createPlaylist, addTracksToPlaylist, trackIds, showToast, onCreated]);
+  }, [
+    title,
+    description,
+    saving,
+    createPlaylist,
+    addTracksToPlaylist,
+    trackIds,
+    showToast,
+    onCreated,
+  ]);
 
   return (
     <div
@@ -154,9 +163,7 @@ function CreatePlaylistModal({
           </div>
 
           {/* Error */}
-          {error && (
-            <p className="text-[13px] text-th-error">{error}</p>
-          )}
+          {error && <p className="text-[13px] text-th-error">{error}</p>}
         </div>
 
         {/* Footer */}
@@ -283,7 +290,7 @@ export default function AddToPlaylistMenu({
   // Filtered playlists for "show all" view
   const filteredPlaylists = searchQuery
     ? userPlaylists.filter((p) =>
-        p.title.toLowerCase().includes(searchQuery.toLowerCase())
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : userPlaylists;
 
@@ -295,32 +302,47 @@ export default function AddToPlaylistMenu({
         await addTracksToPlaylist(playlist.uuid, trackIds);
         pushRecentPlaylistId(playlist.uuid);
         setAddedTo((prev) => new Set([...prev, playlist.uuid]));
-        const label = playlist.title.length > 25 ? playlist.title.slice(0, 23) + "…" : playlist.title;
+        const label =
+          playlist.title.length > 25
+            ? playlist.title.slice(0, 23) + "…"
+            : playlist.title;
         showToast(
           trackIds.length > 1
             ? `Added ${trackIds.length} tracks to "${label}"`
-            : `Added to "${label}"`
+            : `Added to "${label}"`,
         );
         setTimeout(onClose, 500);
       } catch (err: any) {
         const isDuplicateError = (e: unknown): boolean => {
           try {
             const parsed = typeof e === "string" ? JSON.parse(e) : e;
-            if (parsed?.kind === "Api" && parsed?.message?.status === 409) return true;
+            if (parsed?.kind === "Api" && parsed?.message?.status === 409)
+              return true;
           } catch {}
-          return String(e).includes("409") || String(e).toLowerCase().includes("dupe");
+          return (
+            String(e).includes("409") ||
+            String(e).toLowerCase().includes("dupe")
+          );
         };
 
         if (isDuplicateError(err)) {
-          setError(trackIds.length > 1 ? "Some tracks already in this playlist" : "Track already in this playlist");
+          setError(
+            trackIds.length > 1
+              ? "Some tracks already in this playlist"
+              : "Track already in this playlist",
+          );
         } else {
-          setError(trackIds.length > 1 ? "Failed to add tracks" : "Failed to add track");
+          setError(
+            trackIds.length > 1
+              ? "Failed to add tracks"
+              : "Failed to add track",
+          );
         }
       } finally {
         setAddingTo(null);
       }
     },
-    [addTracksToPlaylist, trackIds, onClose, showToast]
+    [addTracksToPlaylist, trackIds, onClose, showToast],
   );
 
   // ── Playlist rows ──
