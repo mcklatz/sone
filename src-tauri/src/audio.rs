@@ -1322,7 +1322,20 @@ fn list_alsa_devices_inner() -> Result<Vec<AudioDevice>, String> {
     let caps = gst::Caps::new_empty_simple("audio/x-raw");
     monitor.add_filter(Some("Audio/Sink"), Some(&caps));
     monitor.start().map_err(|e| format!("Failed to start device monitor: {e}"))?;
-    let devices = monitor.devices();
+
+    // GStreamer 1.28+ starts providers async, so devices() may initially be empty.
+    // On older versions start() blocks and devices are available immediately.
+    let devices = {
+        let mut devs = monitor.devices();
+        let mut waited = 0u32;
+        while devs.is_empty() && waited < 2000 {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            devs = monitor.devices();
+            waited += 100;
+        }
+        devs
+    };
+
     monitor.stop();
 
     log::debug!("[list_alsa_devices] DeviceMonitor found {} devices", devices.len());
